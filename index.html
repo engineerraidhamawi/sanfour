@@ -607,6 +607,33 @@ function exportData(){
  a.download='sanfour-backup-'+new Date().toISOString().slice(0,10)+'.json';
  document.body.appendChild(a);a.click();a.remove();
 }
+ /* ---------- Free reading mode (no time limit) ---------- */
+let timed=localStorage.getItem('sanfour_timed')==='1';
+$('startBtn').insertAdjacentHTML('afterend','<button id="modeT" class="alt small" onclick="toggleTimed()"></button>');
+function modeLabel(){$('modeT').textContent=timed?'⏱ دقيقة واحدة (اضغطي للتغيير)':'♾️ بدون حد زمني (اضغطي للتغيير)';$('timer').textContent=timed?ar(60):ar(0);}
+function toggleTimed(){timed=!timed;localStorage.setItem('sanfour_timed',timed?'1':'0');modeLabel();}
+const _op2=openPassage;
+window.openPassage=function(id){_op2(id);$('modeT').classList.remove('hidden');modeLabel();};
+const _st=startReading;
+window.startReading=async function(){
+ $('modeT').classList.add('hidden');
+ await _st();
+ if(!timed){
+  clearInterval(tick);$('timer').textContent=ar(0);
+  tick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=ar(s);if(s>=600)stopReading(true);},250);
+  $('rnote').textContent=(rec?'🔴 جارٍ التسجيل… ':'')+'لا يوجد حد زمني. اضغطي «انتهى» عندما يتوقف الطالب عن القراءة.';
+ }
+};
+const _sr2=stopReading;
+window.stopReading=function(t){
+ const was=phase;_sr2(t);if(was!=='reading')return;
+ if(!timed&&t===true)elapsed=600;
+ if(t!==true&&confirm('هل قرأ الطالب النص كاملًا حتى آخر كلمة؟')){
+  lastIdx=words.length-1;mode='err';$('modeBtn').classList.remove('sel');
+  $('rnote').textContent='اضغطي على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغطي «احسب النتيجة».';
+  renderWords();
+ }
+};
  migrate();renderHome();
 if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
 </script>
