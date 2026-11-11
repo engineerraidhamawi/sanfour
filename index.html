@@ -418,7 +418,41 @@ function showHistory(){
 }
 function clearHistory(){if(confirm('مسح كل النتائج؟')){localStorage.removeItem('sanfour_h');showHistory();}}
 function goHome(){renderHome();show('home');}
-migrate();renderHome();
+/* ---------- Doctor PIN lock ---------- */
+(function(){
+ const css=document.createElement('style');
+ css.textContent='#pinBox{position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:99}#pinBox .card{max-width:380px;width:90%;text-align:center}#pinIn{max-width:none;text-align:center;font-size:32px;letter-spacing:12px;margin:12px 0}#lockBtn{position:fixed;bottom:16px;left:16px;z-index:50}';
+ document.head.appendChild(css);
+ document.body.insertAdjacentHTML('beforeend',`<div id="pinBox" class="hidden"><div class="card"><h2 id="pinTitle"></h2><p class="note" id="pinNote"></p><input id="pinIn" type="password" inputmode="numeric" maxlength="6" autocomplete="off"><p class="note" id="pinErr" style="color:var(--c);font-weight:700"></p><div class="row" style="justify-content:center"><button onclick="pinOK()">دخول</button><button class="alt" onclick="pinCancel()">إلغاء</button></div><p><a href="#" onclick="pinForgot();return false" class="note">نسيت الرمز؟</a></p></div></div><button id="lockBtn" class="alt small hidden" onclick="lockNow()">🔒 قفل</button>`);
+ document.querySelector('main').insertAdjacentHTML('beforeend',`<section id="done" class="hidden"><div class="card" style="text-align:center"><p style="font-size:70px;margin:0">🎉</p><h2 style="font-size:34px">أحسنت! أنهيت الأسئلة</h2><p class="note">شكرًا على قراءتك الرائعة 🌟</p></div><div class="row"><button class="yellow" onclick="needPin(()=>show('summary'))">🔒 تقرير الدكتورة</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div></section>`);
+})();
+let pinNext=null,pinMode='enter',pinFirst='';
+const PIN_MIN=10;
+function unlocked(){return Date.now()<+(sessionStorage.getItem('sanfour_unlock')||0)}
+function setUnlocked(){sessionStorage.setItem('sanfour_unlock',Date.now()+PIN_MIN*60000);$('lockBtn').classList.remove('hidden')}
+function lockNow(){sessionStorage.removeItem('sanfour_unlock');$('lockBtn').classList.add('hidden');goHome();}
+function needPin(fn){
+ if(unlocked()){setUnlocked();fn();return;}
+ pinNext=fn;$('pinIn').value='';$('pinErr').textContent='';
+ if(!localStorage.getItem('sanfour_pin')){pinMode='new1';$('pinTitle').textContent='🔐 إنشاء رمز الدكتورة';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام لحماية صفحات الدكتورة.';}
+ else{pinMode='enter';$('pinTitle').textContent='🔒 صفحة الدكتورة';$('pinNote').textContent='أدخلي الرمز للمتابعة.';}
+ $('pinBox').classList.remove('hidden');setTimeout(()=>$('pinIn').focus(),50);
+}
+function pinOK(){
+ const v=$('pinIn').value.trim();
+ if(!/^\d{4,6}$/.test(v)){$('pinErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ if(pinMode=='new1'){pinFirst=v;pinMode='new2';$('pinIn').value='';$('pinNote').textContent='أعيدي إدخال الرمز للتأكيد.';$('pinErr').textContent='';return;}
+ if(pinMode=='new2'){if(v!==pinFirst){pinMode='new1';$('pinIn').value='';$('pinErr').textContent='الرمزان غير متطابقين، حاولي مجددًا.';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام.';return;}localStorage.setItem('sanfour_pin',v);}
+ else if(v!==localStorage.getItem('sanfour_pin')){$('pinErr').textContent='الرمز غير صحيح.';$('pinIn').value='';return;}
+ $('pinBox').classList.add('hidden');setUnlocked();const f=pinNext;pinNext=null;if(f)f();
+}
+function pinCancel(){$('pinBox').classList.add('hidden');pinNext=null;}
+function pinForgot(){if(confirm('إعادة تعيين الرمز تمسح كل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){['sanfour_pin','sanfour_h','sanfour_students','sanfour_custom','sanfour_cur'].forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('pinBox').classList.contains('hidden'))pinOK();});
+['openDoctor','showStudents','showHistory','openProfile'].forEach(n=>{const f=window[n];window[n]=function(...a){needPin(()=>f(...a));};});
+const _show=show;window.show=function(id){$('done').classList.toggle('hidden',id!=='done');_show(id);};
+const _showSummary=showSummary;window.showSummary=function(){_showSummary();show('done');};
+migrate();renderHome();if(unlocked())$('lockBtn').classList.remove('hidden');
 </script>
 </body>
 </html>
