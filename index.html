@@ -488,6 +488,39 @@ function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classL
 function logout(){sessionStorage.clear();['lgUser','lgPin','lgPin2'].forEach(i=>$(i).value='');gateMode();$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');$('loginGate').classList.remove('hidden');}
 function gateForgot(){if(confirm('إعادة التعيين تمسح الحساب وكل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
 document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('loginGate').classList.contains('hidden'))loginOK();});
+ /* ---------- Parent weekly report ---------- */
+document.querySelector('main').insertAdjacentHTML('beforeend','<section id="parent" class="hidden"><div id="parentBody"></div></section>');
+const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+function parentData(sid){
+ const st=getStudents().find(x=>x.id==sid)||{name:'—'}, now=Date.now(), wk=7*864e5;
+ const all=getHist().filter(r=>r.sid==sid).reverse();
+ const week=all.filter(r=>r.ts&&now-r.ts<=wk), use=week.length?week:all.slice(-5);
+ return {n:st.name.split(' ')[0],f:new Date(now-wk).toLocaleDateString('ar'),t:new Date(now).toLocaleDateString('ar'),s:use.length,w:use.map(r=>r.wcpm),c:use.map(r=>r.comp),wk:week.length>0};
+}
+function parentLink(sid){return location.origin+location.pathname+'#parent='+b64e(parentData(sid));}
+function shareParent(){const url=parentLink(profSid);window.open('https://wa.me/?text='+encodeURIComponent('تقرير القراءة الأسبوعي من سنفور 🌟\n'+url),'_blank');}
+function copyParent(){const url=parentLink(profSid);if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',url));else prompt('انسخي الرابط:',url);}
+function addParentCard(){
+ if(!profSid||$('parentCard'))return;
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="parentCard"><h2>👪 تقرير ولي الأمر الأسبوعي</h2><p class="note">رابط بسيط يرى فيه ولي الأمر ملخص الأسبوع فقط، دون تفاصيل الأخطاء.</p><div class="row"><button onclick="window.open(parentLink(profSid),'_blank')">عرض التقرير</button><button class="yellow" onclick="shareParent()">مشاركة عبر واتساب</button><button class="alt" onclick="copyParent()">نسخ الرابط</button></div></div>`);
+}
+function renderParent(d){
+ const last=d.w.length?d.w[d.w.length-1]:0, first=d.w[0]||0, avgC=d.c.length?Math.round(d.c.reduce((a,b)=>a+b,0)/d.c.length):0;
+ const stars='⭐'.repeat(Math.min(5,Math.max(1,d.s)));
+ const trend=d.w.length<2?'نحتاج جلسات أكثر لرؤية التطور.':last>first?'سرعة القراءة تتحسن هذا الأسبوع 📈':last==first?'سرعة القراءة ثابتة، والتدريب اليومي يصنع الفرق.':'كان أسبوعًا صعبًا قليلًا، والتشجيع في البيت يساعد كثيرًا 💛';
+ $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${d.f} إلى ${d.t}`:'آخر الجلسات'}</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
+ +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('كلمة في الدقيقة (آخر جلسة)',ar(last))+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div><div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
+ +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
+}
+const _show2=show;window.show=function(id){_show2(id);if(id=='profile')addParentCard();};
+window.addEventListener('DOMContentLoaded',()=>{
+ if(!location.hash.startsWith('#parent='))return;
+ let d;try{d=b64d(location.hash.slice(8));}catch(e){return;}
+ $('loginGate').classList.add('hidden');$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');
+ document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
+ renderParent(d);$('parent').classList.remove('hidden');
+});
 migrate();renderHome();
 if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
 </script>
