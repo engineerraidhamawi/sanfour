@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سنفور</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--y:#FFC93C;--t:#1FA6A0;--c:#FF7A59;--s:#2D3A4A;--bg:#FFF8EC}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--s)}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px}
+header img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--s)}
+header h1{margin:0;font-size:32px}
+header h1 span{color:var(--y)}
+main{max-width:900px;margin:0 auto;padding:0 16px 40px}
+.card{background:#fff;border-radius:24px;padding:24px;margin:16px 0;box-shadow:0 6px 20px rgba(45,58,74,.08)}
+.hidden{display:none!important}
+h2{margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font-family:inherit;font-size:20px;font-weight:700;border:none;border-radius:999px;padding:12px 26px;cursor:pointer;background:var(--t);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+button.alt{background:#fff;color:var(--t);border:2px solid var(--t)}
+button.yellow{background:var(--y);color:var(--s)}
+button.coral{background:var(--c)}
+button.sel{background:var(--s);color:#fff;border-color:var(--s)}
+input{font-family:inherit;font-size:20px;padding:10px 16px;border-radius:14px;border:2px solid #ddd;width:100%;max-width:340px}
+.plist button{display:block;width:100%;text-align:right;margin:8px 0;background:var(--bg);color:var(--s);border:2px solid var(--y)}
+.passage{font-size:32px;line-height:2.3}
+.w{padding:2px 4px;border-radius:8px;cursor:pointer}
+.w.err{background:var(--c);color:#fff}
+.w.last{outline:3px solid var(--t)}
+.w.after{opacity:.35}
+.timer{font-size:44px;font-weight:800;color:var(--c);min-width:90px;text-align:center}
+.big{font-size:64px;font-weight:800;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat{background:var(--bg);border-radius:18px;padding:16px;text-align:center}
+.stat b{display:block;font-size:34px}
+.opt{display:block;width:100%;margin:10px 0;text-align:right;background:var(--bg);color:var(--s);border:2px solid #e8dcc4;font-size:24px}
+.opt.chosen{border-color:var(--t);background:#e3f5f4}
+.tag{display:inline-block;font-size:15px;padding:3px 12px;border-radius:999px;background:var(--y);margin-bottom:8px}
+.note{font-size:18px;color:#5b6675}
+table{width:100%;border-collapse:collapse;font-size:18px}
+td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
+</style>
+</head>
+<body>
+<header><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1>سنفو<span>ر</span></h1></header>
+<main>
+<section id="home">
+ <div class="card"><h2>اسم الطالب</h2><input id="sname" placeholder="مثال: سامي"></div>
+ <div class="card">
+  <h2>الصف</h2><div class="row" id="grades"></div>
+  <h2 style="margin-top:18px">المستوى</h2><div class="row" id="levels"></div>
+ </div>
+ <div class="card"><h2>اختر نصًّا</h2><div class="plist" id="plist"></div></div>
+ <div class="row"><button class="alt" onclick="showHistory()">سجل النتائج</button></div>
+</section>
+<section id="read" class="hidden">
+ <div class="card">
+  <div class="row" style="justify-content:space-between"><h2 id="ptitle"></h2><div class="timer" id="timer">٦٠</div></div>
+  <p class="note" id="rnote"></p>
+  <div class="passage" id="ptext"></div>
+ </div>
+ <div class="row">
+  <button id="startBtn" onclick="startReading()">ابدأ القراءة 🎤</button>
+  <button id="stopBtn" class="coral hidden" onclick="stopReading()">انتهى</button>
+ </div>
+ <div class="row hidden" id="sbtns">
+  <button id="modeBtn" class="alt" onclick="toggleMode()">تحديد آخر كلمة قُرئت</button>
+  <button class="yellow" onclick="calcResult()">احسب النتيجة</button>
+ </div>
+</section>
+<section id="result" class="hidden">
+ <div class="card" style="text-align:center"><h2>قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p></div>
+ <div class="card"><div class="stats" id="rstats"></div><audio id="audio" controls class="hidden" style="width:100%;margin-top:14px"></audio></div>
+ <div class="row"><button onclick="startQuestions()">إلى أسئلة الفهم</button></div>
+</section>
+<section id="quiz" class="hidden">
+ <div class="card"><p class="note" id="qnum"></p><span class="tag" id="qskill"></span><h2 id="qtext" style="font-size:28px"></h2><div id="qopts"></div></div>
+ <div class="row"><button id="nextQ" onclick="nextQuestion()" disabled>التالي</button></div>
+</section>
+<section id="summary" class="hidden">
+ <div class="card"><h2>تقرير الجلسة (للدكتورة)</h2><div class="stats" id="sstats"></div></div>
+ <div class="card"><h2>الفهم حسب المهارة</h2><div id="skills"></div></div>
+ <div class="card"><h2>التوصية</h2><p id="reco" style="font-size:22px"></p><p class="note">النتائج مؤشر للمتابعة فقط، وليست تشخيصًا.</p></div>
+ <div class="row"><button onclick="goHome()">جلسة جديدة</button></div>
+</section>
+<section id="history" class="hidden">
+ <div class="card"><h2>سجل النتائج</h2><div id="htable"></div></div>
+ <div class="row"><button onclick="goHome()">رجوع</button><button class="alt" onclick="clearHistory()">مسح السجل</button></div>
+</section>
+</main>
+<script>
+const PASSAGES=[
+{id:'g1l2',grade:1,level:2,title:'قِطَّتِي لُولُو',
+text:"عِنْدِي قِطَّةٌ صَغِيرَةٌ اسْمُهَا لُولُو. لَوْنُ لُولُو أَبْيَضُ. تُحِبُّ لُولُو الْحَلِيبَ. تَلْعَبُ لُولُو بِالْكُرَةِ فِي الْبَيْتِ. فِي اللَّيْلِ تَنَامُ لُولُو قُرْبَ سَرِيرِي.",
+questions:[
+{q:'ما لَوْنُ لُولُو؟',skill:'حرفي',options:['أسود','أبيض','بُنّي'],answer:1},
+{q:'ماذا تُحِبُّ لُولُو؟',skill:'حرفي',options:['الحليب','الماء','العصير'],answer:0},
+{q:'أين تنام لُولُو في الليل؟',skill:'حرفي',options:['في الحديقة','في المطبخ','قرب السرير'],answer:2},
+{q:'النص يتحدث عن قطة صغيرة وما تحبه.',skill:'الفكرة الرئيسة',options:['صح','خطأ'],answer:0}]},
+{id:'g2l2',grade:2,level:2,title:'الطَّائِرَةُ الضَّائِعَةُ',
+text:"رَكَضَتْ مَرْيَمُ إِلَى الْحَدِيقَةِ وَمَعَهَا طَائِرَةٌ حَمْرَاءُ. كَانَتِ الرِّيحُ قَوِيَّةً، فَطَارَتِ الطَّائِرَةُ عَالِيَةً فِي السَّمَاءِ. فَجْأَةً انْقَطَعَ الْخَيْطُ، وَطَارَتِ الطَّائِرَةُ بَعِيدًا. حَزِنَتْ مَرْيَمُ كَثِيرًا. بَحَثَتْ عَنْهَا مَعَ أَخِيهَا سَامِي، فَوَجَدَاهَا فَوْقَ شَجَرَةٍ كَبِيرَةٍ. صَعِدَ الْحَارِسُ عَلَى سُلَّمٍ وَأَنْزَلَهَا. شَكَرَتْهُ مَرْيَمُ وَقَالَتْ: سَأَرْبِطُ الْخَيْطَ جَيِّدًا فِي الْمَرَّةِ الْقَادِمَةِ.",
+questions:[
+{q:'لماذا طارت الطائرة عالية؟',skill:'حرفي',options:['لأن مريم رمتها','لأن الريح كانت قوية','لأن الطائرة جديدة'],answer:1},
+{q:'أين وُجِدت الطائرة؟',skill:'حرفي',options:['فوق شجرة كبيرة','في النهر','في البيت'],answer:0},
+{q:'ما معنى كلمة «انقطع» في النص؟',skill:'مفردات',options:['طال كثيرًا','تلوّن','انفصل وتمزّق'],answer:2},
+{q:'ماذا تعلّمت مريم من القصة؟',skill:'استنتاجي',options:['ألا تلعب في الحديقة','أن تربط الخيط جيدًا','أن تشتري طائرة جديدة'],answer:1},
+{q:'ما الفكرة الرئيسة للقصة؟',skill:'الفكرة الرئيسة',options:['طائرة ضاعت ثم وُجدت بمساعدة الآخرين','الريح خطيرة دائمًا','الحارس يحب الأشجار'],answer:0}]},
+{id:'g5l1',grade:5,level:1,title:'النَّحلةُ الصَّغيرةُ والعَسَل',
+text:"تعيشُ النحلاتُ في بيتٍ اسمُه الخَلِيَّة. في الخليةِ ملكةٌ واحدةٌ، وعددٌ كبيرٌ من النحلاتِ العامِلات. تضعُ الملكةُ البَيضَ، وتعملُ العاملاتُ طَوالَ اليوم. في الصباحِ، تطيرُ النحلةُ إلى الحديقة. تقفُ على زهرةٍ، وتمتصُّ منها سائلًا حُلوًا اسمُه الرَّحِيق. تحفظُ النحلةُ الرحيقَ في مَعِدةٍ خاصّة، ثم تعودُ إلى الخلية. هناك تُعطي الرحيقَ لنحلاتٍ أخرى. تضعُ النحلاتُ الرحيقَ في بيوتٍ صغيرةٍ من الشَّمع، لها ستةُ جوانب. ثم تُحرِّكُ النحلاتُ أجنحتَها بسرعةٍ لتجفيفِ الماءِ من الرحيق. وبعدَ أيامٍ، يصبحُ الرحيقُ عسلًا كثيفًا. تُغلِقُ النحلاتُ البيوتَ بغطاءٍ من الشمع، ليبقى العسلُ طعامًا لها في الشتاء. وحين تنتقلُ النحلةُ من زهرةٍ إلى زهرة، تحملُ معها حُبوبَ اللِّقاح. وهذا يساعدُ الأزهارَ على صُنعِ البُذورِ والثِّمار. قالت مريمُ لأخيها سامي: «النحلةُ صغيرة، لكنَّ عملَها كبير!» فابتسمَ سامي وقال: «سأشكرُها كلَّما أكلتُ العسل.»",
+questions:[
+{q:'ما اسم السائل الحلو الذي تمتصه النحلة من الزهرة؟',skill:'حرفي',options:['الشمع','الرحيق','اللقاح'],answer:1},
+{q:'ماذا تفعل النحلة بعد أن تمتص الرحيق؟',skill:'ترتيب الأحداث',options:['تعود إلى الخلية','تنام على الزهرة','تصنع الشمع فورًا'],answer:0},
+{q:'ما معنى كلمة «الخليّة» في النص؟',skill:'مفردات',options:['زهرة كبيرة','طعام النحل','بيت النحل'],answer:2},
+{q:'لماذا تُغلق النحلات البيوت بغطاء من الشمع؟',skill:'استنتاجي',options:['لتنام فيها','ليبقى العسل طعامًا لها في الشتاء','لتمنع الضوء'],answer:1},
+{q:'النص يتحدث عن عمل النحلات في صنع العسل ومساعدة الأزهار.',skill:'الفكرة الرئيسة',options:['صح','خطأ'],answer:0}]},
+{id:'g6l3',grade:6,level:3,title:'رحلة الغوص على اللؤلؤ',
+text:"في الماضي، قبل اكتشاف النفط، كان البحر مصدر رزق لكثير من أهل الخليج العربي. وفي كل صيف، كانت السفن الخشبية تنطلق نحو مغاصات اللؤلؤ، وتبقى في عرض البحر قرابة أربعة أشهر، في موسم يُعرف باسم «الغَوص الكبير». على ظهر السفينة يعمل فريق متعاون، يقوده النُّوخذة، أي ربان السفينة. أما الغواص فكان يضع على أنفه ملقطا صغيرا يسمى الفِطام ليمنع دخول الماء، ثم يربط في قدمه حجرا ثقيلا يساعده على النزول بسرعة إلى القاع. وكان يحمل سلة من الحبال تسمى الدَّيين، يجمع فيها المحار بيديه وهو يحبس أنفاسه نحو دقيقة أو أكثر. وفوق السطح يقف السَّيب ممسكا بالحبل، فإذا شده الغواص سحبه بقوة حتى يصعد ليتنفس. كان الغواص يكرر النزول عشرات المرات في اليوم، من شروق الشمس حتى غروبها. وفي صباح اليوم التالي يجلس البحارة معا لفلق المحار، وتتعلق عيونهم بكل صدفة، لعل في داخلها لؤلؤة بيضاء لامعة. وكانت أجمل اللآلئ تباع في الأسواق البعيدة بأثمان غالية. وكان الأهل ينتظرون عودة السفن على الشاطئ بالأغاني والفرح، في يوم يسمونه «القَفّال». اليوم، يتذكر أهل الخليج هذه المهنة الشاقة بفخر، فهي تحكي قصة الصبر والشجاعة والتعاون.",
+questions:[
+{q:'لماذا كان الغواص يربط حجرا ثقيلا في قدمه؟',skill:'حرفي',options:['ليحمل فيه المحار','لينزل بسرعة إلى القاع','ليمنع دخول الماء إلى أنفه'],answer:1},
+{q:'لماذا كانت حياة الغواص تعتمد على السيب؟',skill:'استنتاجي',options:['لأنه يسحبه إلى السطح ليتنفس','لأنه يقود السفينة','لأنه يبيع اللؤلؤ'],answer:0},
+{q:'ما معنى كلمة «النُّوخذة» في النص؟',skill:'مفردات',options:['سلة لجمع المحار','يوم عودة السفن','ربان السفينة'],answer:2},
+{q:'ما الفكرة الرئيسة للنص؟',skill:'الفكرة الرئيسة',options:['اللؤلؤ يباع في الأسواق البعيدة','الغوص على اللؤلؤ مهنة شاقة قامت على الصبر والشجاعة والتعاون','السفن الخشبية كانت كبيرة وجميلة'],answer:1}]}
+];
+const TARGETS={1:[20,30,40],2:[40,50,60],3:[55,65,75],4:[65,75,85],5:[75,85,95],6:[80,90,100]};
+const GN=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
+const LN=['','دعم','ضمن الصف','تحدٍّ'];
+const ar=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+const $=id=>document.getElementById(id);
+const stat=(l,v)=>`<div class="stat"><b>${v}</b>${l}</div>`;
+let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=0,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={};
+
+function show(id){['home','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
+function renderHome(){
+ $('grades').innerHTML=[1,2,3,4,5,6].map(g=>`<button class="alt ${g==grade?'sel':''}" onclick="grade=${g};renderHome()">${GN[g]}</button>`).join('');
+ $('levels').innerHTML=[1,2,3].map(l=>`<button class="alt ${l==level?'sel':''}" onclick="level=${l};renderHome()">${ar(l)} · ${LN[l]}</button>`).join('');
+ const list=PASSAGES.filter(p=>p.grade==grade&&p.level==level);
+ $('plist').innerHTML=list.length?list.map(p=>`<button onclick="openPassage('${p.id}')">📖 ${p.title}</button>`).join(''):'<p class="note">لا توجد نصوص لهذا الصف والمستوى بعد. جرّب صفًّا أو مستوى آخر.</p>';
+}
+function openPassage(id){
+ P=PASSAGES.find(p=>p.id==id);
+ words=P.text.trim().split(/\s+/);errs=new Set();lastIdx=words.length-1;mode='err';phase='idle';elapsed=0;audioURL=null;
+ $('ptitle').textContent=P.title;$('timer').textContent=ar(60);
+ $('rnote').textContent='اضغط «ابدأ القراءة» واطلب من الطالب أن يقرأ بصوت مرتفع.';
+ $('startBtn').classList.remove('hidden');$('stopBtn').classList.add('hidden');$('sbtns').classList.add('hidden');$('modeBtn').classList.remove('sel');
+ renderWords();show('read');
+}
+function renderWords(){
+ $('ptext').innerHTML=words.map((w,i)=>`<span class="w ${errs.has(i)?'err':''} ${phase=='score'&&i==lastIdx?'last':''} ${phase=='score'&&i>lastIdx?'after':''}" onclick="tapWord(${i})">${w}</span>`).join(' ');
+}
+function tapWord(i){
+ if(phase!='score')return;
+ if(mode=='last'){lastIdx=i;mode='err';$('modeBtn').classList.remove('sel');}
+ else{errs.has(i)?errs.delete(i):errs.add(i);}
+ renderWords();
+}
+function toggleMode(){mode=mode=='last'?'err':'last';$('modeBtn').classList.toggle('sel',mode=='last');}
+async function startReading(){
+ phase='reading';chunks=[];rec=null;
+ try{
+  const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  rec=new MediaRecorder(stream);
+  rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=()=>{audioURL=URL.createObjectURL(new Blob(chunks,{type:rec.mimeType}));stream.getTracks().forEach(t=>t.stop());};
+  rec.start();
+ }catch(e){rec=null;}
+ t0=Date.now();
+ $('startBtn').classList.add('hidden');$('stopBtn').classList.remove('hidden');
+ $('rnote').textContent=rec?'🔴 جارٍ التسجيل… اضغط «انتهى» إذا أنهى الطالب النص قبل الوقت.':'التسجيل الصوتي غير متاح، لكن المؤقت يعمل.';
+ tick=setInterval(()=>{const s=60-Math.floor((Date.now()-t0)/1000);$('timer').textContent=ar(Math.max(s,0));if(s<=0)stopReading(true);},250);
+}
+function stopReading(timeUp){
+ if(phase!='reading')return;
+ clearInterval(tick);
+ elapsed=timeUp===true?60:Math.max(1,(Date.now()-t0)/1000);
+ if(rec&&rec.state!='inactive')rec.stop();
+ phase='score';
+ $('stopBtn').classList.add('hidden');$('sbtns').classList.remove('hidden');
+ $('rnote').textContent=timeUp===true?'انتهى الوقت! اضغط على كل كلمة أخطأ فيها الطالب، ثم اضغط «تحديد آخر كلمة قُرئت» واختر آخر كلمة وصل إليها.':'اضغط على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغط «احسب النتيجة».';
+ renderWords();
+}
+function calcResult(){
+ const attempted=lastIdx+1, e=[...errs].filter(i=>i<=lastIdx).length, correct=attempted-e;
+ R={wcpm:Math.round(correct/elapsed*60),acc:Math.round(correct/attempted*100),correct,errors:e,secs:Math.round(elapsed)};
+ const target=TARGETS[P.grade][P.level-1];
+ $('wcpm').textContent=ar(R.wcpm);
+ $('rstats').innerHTML=stat('الدقة',ar(R.acc)+'٪')+stat('كلمات صحيحة',ar(correct))+stat('أخطاء',ar(e))+stat('الزمن',ar(R.secs)+' ث')+stat('الهدف المبدئي',ar(target));
+ if(audioURL){$('audio').src=audioURL;$('audio').classList.remove('hidden')}else{$('audio').classList.add('hidden')}
+ show('result');
+}
+function startQuestions(){qi=0;answers=[];renderQ();show('quiz');}
+function renderQ(){
+ const q=P.questions[qi];
+ $('qnum').textContent=`السؤال ${ar(qi+1)} من ${ar(P.questions.length)}`;
+ $('qskill').textContent=q.skill;$('qtext').textContent=q.q;
+ $('qopts').innerHTML=q.options.map((o,i)=>`<button class="opt" onclick="pick(${i},this)">${o}</button>`).join('');
+ $('nextQ').disabled=true;$('nextQ').textContent=qi==P.questions.length-1?'إنهاء':'التالي';
+}
+function pick(i,el){answers[qi]=i;document.querySelectorAll('.opt').forEach(b=>b.classList.remove('chosen'));el.classList.add('chosen');$('nextQ').disabled=false;}
+function nextQuestion(){qi++;if(qi<P.questions.length)renderQ();else showSummary();}
+function showSummary(){
+ const qs=P.questions, right=qs.filter((q,i)=>answers[i]===q.answer).length, comp=Math.round(right/qs.length*100);
+ const target=TARGETS[P.grade][P.level-1], sk={};
+ qs.forEach((q,i)=>{sk[q.skill]=sk[q.skill]||[0,0];sk[q.skill][1]++;if(answers[i]===q.answer)sk[q.skill][0]++;});
+ $('sstats').innerHTML=stat('كلمة في الدقيقة',ar(R.wcpm))+stat('الهدف المبدئي',ar(target))+stat('الدقة',ar(R.acc)+'٪')+stat('الفهم',ar(comp)+'٪');
+ $('skills').innerHTML='<table><tr><th>المهارة</th><th>النتيجة</th></tr>'+Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} من ${ar(v[1])}</td></tr>`).join('')+'</table>';
+ const fluent=R.wcpm>=target&&R.acc>=95, understands=comp>=80;
+ let reco;
+ if(fluent&&understands)reco='قارئ متمكن في هذا المستوى ✅ إذا تكرر ذلك في ٣ جلسات متتالية يُقترح الصعود إلى المستوى التالي.';
+ else if(fluent)reco='يقرأ بطلاقة جيدة، لكنه يحتاج دعمًا في الفهم والمفردات.';
+ else if(understands)reco='يفهم النص جيدًا رغم بطء القراءة؛ التركيز على الطلاقة وتعرّف الكلمات.';
+ else reco='يحتاج دعمًا في الطلاقة والفهم معًا. إذا تكرر ذلك في ٣ جلسات يُقترح مستوى أسهل.';
+ if(R.acc<90)reco+=' (الدقة أقل من ٩٠٪)';
+ $('reco').textContent=reco;
+ const h=JSON.parse(localStorage.getItem('sanfour_h')||'[]');
+ h.unshift({name:$('sname').value||'—',date:new Date().toLocaleDateString('ar'),title:P.title,wcpm:R.wcpm,acc:R.acc,comp});
+ localStorage.setItem('sanfour_h',JSON.stringify(h));
+ show('summary');
+}
+function showHistory(){
+ const h=JSON.parse(localStorage.getItem('sanfour_h')||'[]');
+ $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${r.name}</td><td>${r.date}</td><td>${r.title}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
+ show('history');
+}
+function clearHistory(){if(confirm('مسح كل النتائج؟')){localStorage.removeItem('sanfour_h');showHistory();}}
+function goHome(){renderHome();show('home');}
+renderHome();
+</script>
+</body>
+</html>
