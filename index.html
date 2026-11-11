@@ -41,7 +41,7 @@ label{display:block;font-weight:700;margin:14px 0 6px}
 .w.after{opacity:.35}
 .timer{font-size:44px;font-weight:800;color:var(--c);min-width:90px;text-align:center}
 .big{font-size:64px;font-weight:800;margin:0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .stat{background:var(--bg);border-radius:18px;padding:16px;text-align:center}
 .stat b{display:block;font-size:34px}
 .opt{display:block;width:100%;margin:10px 0;text-align:right;background:var(--bg);color:var(--s);border:2px solid #e8dcc4;font-size:24px}
@@ -56,7 +56,13 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 <header><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1>سنفو<span>ر</span></h1></header>
 <main>
 <section id="home">
- <div class="card"><h2>اسم الطالب</h2><input id="sname" placeholder="مثال: سامي"></div>
+ <div class="card"><h2>الطالب</h2>
+  <div class="row">
+   <select id="sSel" onchange="curSid=this.value;localStorage.setItem('sanfour_cur',curSid)"></select>
+   <button class="alt small" onclick="addStudent(false)">+ طالب جديد</button>
+   <button class="alt small" onclick="openProfile(curSid)">📈 ملف الطالب</button>
+  </div>
+ </div>
  <div class="card">
   <h2>الصف</h2><div class="row" id="grades"></div>
   <h2 style="margin-top:18px">المستوى</h2><div class="row" id="levels"></div>
@@ -64,8 +70,28 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  <div class="card"><h2>اختر نصًّا</h2><div class="plist" id="plist"></div></div>
  <div class="row">
   <button class="yellow" onclick="openDoctor()">✍️ إضافة نص (للدكتورة)</button>
+  <button class="alt" onclick="showStudents()">👥 الطلاب</button>
   <button class="alt" onclick="showHistory()">سجل النتائج</button>
  </div>
+</section>
+
+<section id="students" class="hidden">
+ <div class="card">
+  <div class="row" style="justify-content:space-between"><h2>الطلاب</h2><button class="alt small" onclick="addStudent(true)">+ طالب جديد</button></div>
+  <div id="stList"></div>
+ </div>
+ <div class="row"><button onclick="goHome()">رجوع</button></div>
+</section>
+
+<section id="profile" class="hidden">
+ <div class="card">
+  <div class="row" style="justify-content:space-between">
+   <h2 id="prName" style="font-size:30px;margin:0"></h2>
+   <div class="row"><button class="alt small" onclick="showStudents()">كل الطلاب</button><button class="alt small" onclick="deleteStudent()">حذف الطالب</button></div>
+  </div>
+ </div>
+ <div id="prBody"></div>
+ <div class="row"><button onclick="goHome()">الصفحة الرئيسية</button></div>
 </section>
 
 <section id="doctor" class="hidden">
@@ -116,7 +142,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  <div class="card"><h2>تقرير الجلسة (للدكتورة)</h2><div class="stats" id="sstats"></div></div>
  <div class="card"><h2>الفهم حسب المهارة</h2><div id="skills"></div></div>
  <div class="card"><h2>التوصية</h2><p id="reco" style="font-size:22px"></p><p class="note">النتائج مؤشر للمتابعة فقط، وليست تشخيصًا.</p></div>
- <div class="row"><button onclick="goHome()">جلسة جديدة</button></div>
+ <div class="row"><button onclick="openProfile(curSid)">📈 ملف الطالب</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div>
 </section>
 <section id="history" class="hidden">
  <div class="card"><h2>سجل النتائج</h2><div id="htable"></div></div>
@@ -166,10 +192,86 @@ const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g
 const stat=(l,v)=>`<div class="stat"><b>${v}</b>${l}</div>`;
 const getCustom=()=>JSON.parse(localStorage.getItem('sanfour_custom')||'[]');
 const allPassages=()=>PASSAGES.concat(getCustom());
+const getStudents=()=>JSON.parse(localStorage.getItem('sanfour_students')||'[]');
+const saveStudents=s=>localStorage.setItem('sanfour_students',JSON.stringify(s));
+const getHist=()=>JSON.parse(localStorage.getItem('sanfour_h')||'[]');
+const saveHist=h=>localStorage.setItem('sanfour_h',JSON.stringify(h));
+const studentName=id=>(getStudents().find(x=>x.id==id)||{}).name||'—';
 let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=0,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={},dq=[];
+let curSid=localStorage.getItem('sanfour_cur')||'',profSid='';
 
-function show(id){['home','doctor','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
+function show(id){['home','students','profile','doctor','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
+
+/* ---------- Students ---------- */
+function migrate(){
+ const s=getStudents(),h=getHist();let ch=false;
+ h.forEach(r=>{if(!r.sid){let st=s.find(x=>x.name==r.name);if(!st){st={id:'s'+Date.now()+Math.random().toString(36).slice(2,6),name:r.name||'—'};s.push(st);}r.sid=st.id;ch=true;}});
+ if(ch){saveStudents(s);saveHist(h);}
+}
+function renderStudentSel(){
+ const s=getStudents();
+ if(!s.find(x=>x.id==curSid))curSid=s.length?s[0].id:'';
+ $('sSel').innerHTML=s.length?s.map(x=>`<option value="${x.id}" ${x.id==curSid?'selected':''}>${esc(x.name)}</option>`).join(''):'<option value="">— أضف طالبًا أولًا —</option>';
+}
+function addStudent(fromList){
+ const n=(prompt('اسم الطالب:')||'').trim();if(!n)return;
+ const s=getStudents(),st={id:'s'+Date.now(),name:n};s.push(st);saveStudents(s);
+ curSid=st.id;localStorage.setItem('sanfour_cur',curSid);
+ fromList?showStudents():renderHome();
+}
+function showStudents(){
+ const s=getStudents(),h=getHist();
+ $('stList').innerHTML=s.length?s.map(x=>{const n=h.filter(r=>r.sid==x.id).length;return `<div class="row" style="justify-content:space-between;border-bottom:1px solid #eee;padding:10px 0"><span style="font-size:20px">👤 ${esc(x.name)} — ${ar(n)} جلسة</span><button class="small" onclick="openProfile('${x.id}')">📈 الملف</button></div>`;}).join(''):'<p class="note">لا يوجد طلاب بعد.</p>';
+ show('students');
+}
+function deleteStudent(){
+ if(!profSid||!confirm('حذف الطالب وكل جلساته؟'))return;
+ saveStudents(getStudents().filter(x=>x.id!=profSid));saveHist(getHist().filter(r=>r.sid!=profSid));
+ if(curSid==profSid)curSid='';showStudents();
+}
+function chart(vals,max,color,target){
+ const W=600,H=240,p=36,n=vals.length;
+ const X=i=>n==1?W/2:W-p-i*(W-2*p)/(n-1);
+ const Y=v=>H-p-(v/max)*(H-2*p);
+ let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+ s+=`<line x1="${p}" y1="${H-p}" x2="${W-p}" y2="${H-p}" stroke="#ddd" stroke-width="2"/>`;
+ if(target!=null)s+=`<line x1="${p}" y1="${Y(target)}" x2="${W-p}" y2="${Y(target)}" stroke="#2D3A4A" stroke-opacity=".45" stroke-width="2" stroke-dasharray="8 6"/>`;
+ if(n>1)s+=`<polyline fill="none" stroke="${color}" stroke-width="4" stroke-linejoin="round" points="${vals.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`;
+ vals.forEach((v,i)=>{s+=`<circle cx="${X(i)}" cy="${Y(v)}" r="7" fill="${color}"/><text x="${X(i)}" y="${Y(v)-14}" text-anchor="middle" font-size="18" font-family="Tajawal" fill="#2D3A4A">${ar(v)}</text><text x="${X(i)}" y="${H-10}" text-anchor="middle" font-size="15" fill="#5b6675">${ar(i+1)}</text>`;});
+ return s+'</svg>';
+}
+function recommend(ss){
+ const last=ss[ss.length-1];
+ if(!last.grade)return 'أكمل جلسات جديدة للحصول على توصية.';
+ const same=ss.filter(r=>r.grade==last.grade&&r.level==last.level).slice(-3);
+ if(same.length<3)return `يلزم ${ar(3-same.length)} جلسة إضافية في هذا المستوى قبل التوصية بتغيير المستوى.`;
+ const t=TARGETS[last.grade][last.level-1];
+ if(same.every(r=>r.wcpm>=t&&r.acc>=95&&r.comp>=80))return last.level<3?'⬆️ يُقترح الصعود إلى المستوى '+ar(last.level+1)+'.':'⬆️ متمكن من المستوى الثالث؛ يمكن التفكير في الصف التالي.';
+ if(same.every(r=>r.acc<90||r.wcpm<=t-15))return last.level>1?'⬇️ يُقترح الانتقال مؤقتًا إلى المستوى '+ar(last.level-1)+' للدعم.':'يحتاج دعمًا إضافيًّا في المستوى الأول.';
+ return '➡️ البقاء في المستوى الحالي ومواصلة التدريب.';
+}
+function openProfile(sid){
+ if(!sid){alert('اختر طالبًا أولًا');return;}
+ const st=getStudents().find(x=>x.id==sid);if(!st)return;
+ profSid=sid;$('prName').textContent='👤 '+st.name;
+ const ss=getHist().filter(r=>r.sid==sid).reverse();
+ if(!ss.length){$('prBody').innerHTML='<div class="card"><p class="note">لا توجد جلسات لهذا الطالب بعد.</p></div>';show('profile');return;}
+ const lg=[...ss].reverse().find(r=>r.grade), target=lg?TARGETS[lg.grade][lg.level-1]:null;
+ const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);
+ const wc=ss.map(r=>r.wcpm), cp=ss.map(r=>r.comp), last=ss[ss.length-1];
+ let html=`<div class="card">${lg?`<p class="note">المستوى الحالي: الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})</p>`:''}<div class="stats">${stat('عدد الجلسات',ar(ss.length))+stat('آخر سرعة',ar(last.wcpm))+stat('أفضل سرعة',ar(Math.max(...wc)))+stat('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+stat('متوسط الفهم',ar(avg(cp))+'٪')}</div></div>`;
+ html+=`<div class="card"><h2>تطور سرعة القراءة (كلمة في الدقيقة)</h2>${chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target)}<p class="note">${target!=null?`الخط المتقطع = الهدف المبدئي (${ar(target)}). `:''}الجلسات من اليمين (الأقدم) إلى اليسار (الأحدث).</p></div>`;
+ html+=`<div class="card"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪ (فهم جيد).</p></div>`;
+ const sk={};ss.forEach(r=>Object.entries(r.skills||{}).forEach(([k,v])=>{sk[k]=sk[k]||[0,0];sk[k][0]+=v[0];sk[k][1]+=v[1];}));
+ if(Object.keys(sk).length)html+=`<div class="card"><h2>الفهم حسب المهارة (كل الجلسات)</h2><table><tr><th>المهارة</th><th>الصحيح</th><th>النسبة</th></tr>${Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} من ${ar(v[1])}</td><td>${ar(Math.round(v[0]/v[1]*100))}٪</td></tr>`).join('')}</table></div>`;
+ html+=`<div class="card"><h2>التوصية</h2><p style="font-size:22px">${recommend(ss)}</p><p class="note">مؤشر للمتابعة فقط، وليس تشخيصًا. القرار النهائي للدكتورة.</p></div>`;
+ html+=`<div class="card"><h2>كل الجلسات</h2><table><tr><th>#</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>${ss.map((r,i)=>`<tr><td>${ar(i+1)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).reverse().join('')}</table></div>`;
+ $('prBody').innerHTML=html;show('profile');
+}
+
+/* ---------- Home ---------- */
 function renderHome(){
+ renderStudentSel();
  $('grades').innerHTML=[1,2,3,4,5,6].map(g=>`<button class="alt ${g==grade?'sel':''}" onclick="grade=${g};renderHome()">${GN[g]}</button>`).join('');
  $('levels').innerHTML=[1,2,3].map(l=>`<button class="alt ${l==level?'sel':''}" onclick="level=${l};renderHome()">${ar(l)} · ${LN[l]}</button>`).join('');
  const list=allPassages().filter(p=>p.grade==grade&&p.level==level);
@@ -229,10 +331,11 @@ function delPassage(id){if(confirm('حذف هذا النص؟')){localStorage.set
 
 /* ---------- Reading session ---------- */
 function openPassage(id){
+ if(!curSid){alert('أضف طالبًا أولًا من زر «+ طالب جديد».');return;}
  P=allPassages().find(p=>p.id==id);
  words=P.text.trim().split(/\s+/);errs=new Set();lastIdx=words.length-1;mode='err';phase='idle';elapsed=0;audioURL=null;
  $('ptitle').textContent=P.title;$('timer').textContent=ar(60);
- $('rnote').textContent='اضغط «ابدأ القراءة» واطلب من الطالب أن يقرأ بصوت مرتفع.';
+ $('rnote').textContent='الطالب: '+studentName(curSid)+' — اضغط «ابدأ القراءة» واطلب منه أن يقرأ بصوت مرتفع.';
  $('startBtn').classList.remove('hidden');$('stopBtn').classList.add('hidden');$('sbtns').classList.add('hidden');$('modeBtn').classList.remove('sel');
  renderWords();show('read');
 }
@@ -303,19 +406,19 @@ function showSummary(){
  else reco='يحتاج دعمًا في الطلاقة والفهم معًا. إذا تكرر ذلك في ٣ جلسات يُقترح مستوى أسهل.';
  if(R.acc<90)reco+=' (الدقة أقل من ٩٠٪)';
  $('reco').textContent=reco;
- const h=JSON.parse(localStorage.getItem('sanfour_h')||'[]');
- h.unshift({name:$('sname').value||'—',date:new Date().toLocaleDateString('ar'),title:P.title,wcpm:R.wcpm,acc:R.acc,comp});
- localStorage.setItem('sanfour_h',JSON.stringify(h));
+ const h=getHist();
+ h.unshift({sid:curSid,name:studentName(curSid),ts:Date.now(),date:new Date().toLocaleDateString('ar'),title:P.title,grade:P.grade,level:P.level,wcpm:R.wcpm,acc:R.acc,comp,skills:sk});
+ saveHist(h);
  show('summary');
 }
 function showHistory(){
- const h=JSON.parse(localStorage.getItem('sanfour_h')||'[]');
- $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
+ const h=getHist();
+ $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${esc(studentName(r.sid)||r.name)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
  show('history');
 }
 function clearHistory(){if(confirm('مسح كل النتائج؟')){localStorage.removeItem('sanfour_h');showHistory();}}
 function goHome(){renderHome();show('home');}
-renderHome();
+migrate();renderHome();
 </script>
 </body>
 </html>
