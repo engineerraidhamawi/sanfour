@@ -452,7 +452,44 @@ document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('pinBox').classLis
 ['openDoctor','showStudents','showHistory','openProfile'].forEach(n=>{const f=window[n];window[n]=function(...a){needPin(()=>f(...a));};});
 const _show=show;window.show=function(id){$('done').classList.toggle('hidden',id!=='done');_show(id);};
 const _showSummary=showSummary;window.showSummary=function(){_showSummary();show('done');};
-migrate();renderHome();if(unlocked())$('lockBtn').classList.remove('hidden');
+/* ---------- Login gate ---------- */
+(function(){
+ const css=document.createElement('style');
+ css.textContent='#loginGate{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}#loginGate .card{max-width:420px;width:100%;text-align:center}#loginGate img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--s)}#loginGate input{max-width:none;margin:8px 0;text-align:center}#lgPin,#lgPin2{letter-spacing:10px;font-size:28px}#logoutBtn{position:fixed;bottom:16px;right:16px;z-index:50}';
+ document.head.appendChild(css);
+ document.body.insertAdjacentHTML('beforeend',`<div id="loginGate"><div class="card"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1 style="font-size:40px;margin:10px 0">سنفو<span style="color:var(--y)">ر</span></h1><h2 id="lgTitle"></h2><input id="lgUser" placeholder="اسم المستخدم" autocomplete="username"><input id="lgPin" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز" autocomplete="current-password"><input id="lgPin2" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="أعيدي إدخال الرمز"><p class="note" id="lgErr" style="color:var(--c);font-weight:700"></p><button id="lgBtn" style="width:100%" onclick="loginOK()"></button><p class="note" id="lgHint"></p><p><a href="#" onclick="gateForgot();return false" class="note">نسيت الرمز؟</a></p></div></div><button id="logoutBtn" class="alt small hidden" onclick="logout()">🚪 خروج</button>`);
+})();
+const getUsers=()=>JSON.parse(localStorage.getItem('sanfour_users')||'[]');
+function gateMode(){
+ const first=!getUsers().length;
+ $('lgTitle').textContent=first?'إنشاء حساب الدكتورة':'تسجيل الدخول';
+ $('lgBtn').textContent=first?'إنشاء الحساب':'دخول';
+ $('lgPin2').classList.toggle('hidden',!first);
+ $('lgHint').textContent=first?'اختاري اسم مستخدم ورمزًا من ٤ إلى ٦ أرقام.':'';
+}
+function loginOK(){
+ const u=$('lgUser').value.trim(),p=$('lgPin').value.trim(),users=getUsers();
+ $('lgErr').textContent='';
+ if(!u){$('lgErr').textContent='اكتبي اسم المستخدم.';return;}
+ if(!/^\d{4,6}$/.test(p)){$('lgErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ let user;
+ if(!users.length){
+  if(p!==$('lgPin2').value.trim()){$('lgErr').textContent='الرمزان غير متطابقين.';return;}
+  user={u,pin:p};localStorage.setItem('sanfour_users',JSON.stringify([user]));
+ }else{
+  user=users.find(x=>x.u==u&&x.pin==p);
+  if(!user){$('lgErr').textContent='اسم المستخدم أو الرمز غير صحيح.';$('lgPin').value='';return;}
+ }
+ localStorage.setItem('sanfour_pin',user.pin);
+ sessionStorage.setItem('sanfour_user',user.u);
+ enterApp();
+}
+function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classList.remove('hidden');goHome();}
+function logout(){sessionStorage.clear();['lgUser','lgPin','lgPin2'].forEach(i=>$(i).value='');gateMode();$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');$('loginGate').classList.remove('hidden');}
+function gateForgot(){if(confirm('إعادة التعيين تمسح الحساب وكل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('loginGate').classList.contains('hidden'))loginOK();});
+migrate();renderHome();
+if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
 </script>
 </body>
 </html>
