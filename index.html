@@ -24,7 +24,15 @@ button.alt{background:#fff;color:var(--t);border:2px solid var(--t)}
 button.yellow{background:var(--y);color:var(--s)}
 button.coral{background:var(--c)}
 button.sel{background:var(--s);color:#fff;border-color:var(--s)}
-input{font-family:inherit;font-size:20px;padding:10px 16px;border-radius:14px;border:2px solid #ddd;width:100%;max-width:340px}
+button.small{font-size:16px;padding:6px 16px}
+input,select,textarea{font-family:inherit;font-size:19px;padding:10px 14px;border-radius:14px;border:2px solid #ddd;background:#fff;color:var(--s)}
+input{width:100%;max-width:340px}
+input.full{max-width:none;margin:8px 0}
+textarea{width:100%;font-size:22px;line-height:1.9;margin-top:6px}
+label{display:block;font-weight:700;margin:14px 0 6px}
+.qcard{border:2px solid #f0e6d2;border-radius:18px;padding:14px;margin:12px 0}
+.optrow{flex-wrap:nowrap}
+.optrow input[type=radio]{width:26px;max-width:26px;height:26px;flex:none;padding:0}
 .plist button{display:block;width:100%;text-align:right;margin:8px 0;background:var(--bg);color:var(--s);border:2px solid var(--y)}
 .passage{font-size:32px;line-height:2.3}
 .w{padding:2px 4px;border-radius:8px;cursor:pointer}
@@ -54,8 +62,32 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
   <h2 style="margin-top:18px">المستوى</h2><div class="row" id="levels"></div>
  </div>
  <div class="card"><h2>اختر نصًّا</h2><div class="plist" id="plist"></div></div>
- <div class="row"><button class="alt" onclick="showHistory()">سجل النتائج</button></div>
+ <div class="row">
+  <button class="yellow" onclick="openDoctor()">✍️ إضافة نص (للدكتورة)</button>
+  <button class="alt" onclick="showHistory()">سجل النتائج</button>
+ </div>
 </section>
+
+<section id="doctor" class="hidden">
+ <div class="card">
+  <h2>نص جديد</h2>
+  <label>عنوان النص</label><input id="dTitle" class="full" placeholder="مثال: رحلة إلى البحر">
+  <div class="row" style="margin-top:8px"><select id="dGrade"></select><select id="dLevel"></select></div>
+  <label>نص القراءة</label>
+  <textarea id="dText" rows="7" oninput="countWords()" placeholder="اكتبي النص هنا أو الصقيه…"></textarea>
+  <p class="note" id="dCount"></p>
+ </div>
+ <div class="card">
+  <div class="row" style="justify-content:space-between"><h2>أسئلة الفهم</h2><span class="tag" id="qCount"></span></div>
+  <p class="note">من ٤ إلى ٦ أسئلة. حددي نوع المهارة والإجابة الصحيحة لكل سؤال.</p>
+  <div id="qList"></div>
+  <button class="alt" id="addQBtn" onclick="addQ()">+ أضف سؤالًا</button>
+ </div>
+ <p class="note" id="dErr" style="color:var(--c);font-weight:700"></p>
+ <div class="row"><button onclick="savePassage()">حفظ ونشر</button><button class="alt" onclick="goHome()">إلغاء</button></div>
+ <div class="card"><h2>نصوصي</h2><div id="myList"></div></div>
+</section>
+
 <section id="read" class="hidden">
  <div class="card">
   <div class="row" style="justify-content:space-between"><h2 id="ptitle"></h2><div class="timer" id="timer">٦٠</div></div>
@@ -127,20 +159,77 @@ questions:[
 const TARGETS={1:[20,30,40],2:[40,50,60],3:[55,65,75],4:[65,75,85],5:[75,85,95],6:[80,90,100]};
 const GN=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
 const LN=['','دعم','ضمن الصف','تحدٍّ'];
+const SKILLS=['حرفي','استنتاجي','مفردات','ترتيب الأحداث','الفكرة الرئيسة','نقدي'];
 const ar=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
 const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const stat=(l,v)=>`<div class="stat"><b>${v}</b>${l}</div>`;
-let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=0,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={};
+const getCustom=()=>JSON.parse(localStorage.getItem('sanfour_custom')||'[]');
+const allPassages=()=>PASSAGES.concat(getCustom());
+let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=0,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={},dq=[];
 
-function show(id){['home','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
+function show(id){['home','doctor','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
 function renderHome(){
  $('grades').innerHTML=[1,2,3,4,5,6].map(g=>`<button class="alt ${g==grade?'sel':''}" onclick="grade=${g};renderHome()">${GN[g]}</button>`).join('');
  $('levels').innerHTML=[1,2,3].map(l=>`<button class="alt ${l==level?'sel':''}" onclick="level=${l};renderHome()">${ar(l)} · ${LN[l]}</button>`).join('');
- const list=PASSAGES.filter(p=>p.grade==grade&&p.level==level);
- $('plist').innerHTML=list.length?list.map(p=>`<button onclick="openPassage('${p.id}')">📖 ${p.title}</button>`).join(''):'<p class="note">لا توجد نصوص لهذا الصف والمستوى بعد. جرّب صفًّا أو مستوى آخر.</p>';
+ const list=allPassages().filter(p=>p.grade==grade&&p.level==level);
+ $('plist').innerHTML=list.length?list.map(p=>`<button onclick="openPassage('${p.id}')">${p.custom?'✍️':'📖'} ${esc(p.title)}</button>`).join(''):'<p class="note">لا توجد نصوص لهذا الصف والمستوى بعد. جرّب صفًّا أو مستوى آخر، أو أضيفي نصًّا جديدًا.</p>';
 }
+
+/* ---------- Doctor: add passages ---------- */
+const newQ=()=>({q:'',skill:'حرفي',type:'mc',options:['','',''],answer:0});
+function openDoctor(){
+ $('dTitle').value='';$('dText').value='';$('dErr').textContent='';
+ dq=[newQ(),newQ(),newQ(),newQ()];
+ $('dGrade').innerHTML=[1,2,3,4,5,6].map(g=>`<option value="${g}" ${g==grade?'selected':''}>الصف ${GN[g]}</option>`).join('');
+ $('dLevel').innerHTML=[1,2,3].map(l=>`<option value="${l}" ${l==level?'selected':''}>المستوى ${ar(l)} · ${LN[l]}</option>`).join('');
+ countWords();renderQs();renderMine();show('doctor');
+}
+function countWords(){const t=$('dText').value.trim();$('dCount').textContent=ar(t?t.split(/\s+/).length:0)+' كلمة';}
+function renderQs(){
+ $('qCount').textContent=ar(dq.length)+' من ٦';
+ $('addQBtn').disabled=dq.length>=6;
+ $('qList').innerHTML=dq.map((q,i)=>{
+  const opts=q.type=='tf'?['صح','خطأ']:q.options;
+  return `<div class="qcard">
+   <div class="row" style="justify-content:space-between"><b>السؤال ${ar(i+1)}</b>${dq.length>4?`<button class="alt small" onclick="delQ(${i})">حذف</button>`:''}</div>
+   <input class="full" placeholder="اكتبي السؤال" value="${esc(q.q)}" oninput="dq[${i}].q=this.value">
+   <div class="row">
+    <select onchange="dq[${i}].skill=this.value">${SKILLS.map(s=>`<option ${s==q.skill?'selected':''}>${s}</option>`).join('')}</select>
+    <select onchange="setType(${i},this.value)"><option value="mc" ${q.type=='mc'?'selected':''}>اختيار من متعدد</option><option value="tf" ${q.type=='tf'?'selected':''}>صح أو خطأ</option></select>
+   </div>
+   ${opts.map((o,j)=>`<div class="row optrow"><input type="radio" name="ans${i}" ${q.answer==j?'checked':''} onchange="dq[${i}].answer=${j}">${q.type=='tf'?`<span style="font-size:20px">${o}</span>`:`<input class="full" placeholder="الخيار ${ar(j+1)}" value="${esc(o)}" oninput="dq[${i}].options[${j}]=this.value">`}</div>`).join('')}
+   <p class="note">اختاري الدائرة بجانب الإجابة الصحيحة.</p>
+  </div>`;}).join('');
+}
+function addQ(){if(dq.length<6){dq.push(newQ());renderQs();}}
+function delQ(i){if(dq.length>4){dq.splice(i,1);renderQs();}}
+function setType(i,t){dq[i].type=t;dq[i].answer=0;renderQs();}
+function savePassage(){
+ const title=$('dTitle').value.trim(), text=$('dText').value.trim();
+ let err='';
+ if(!title)err='اكتبي عنوان النص.';
+ else if(!text||text.split(/\s+/).length<10)err='النص قصير جدًّا (١٠ كلمات على الأقل).';
+ else if(dq.length<4||dq.length>6)err='يجب أن يكون عدد الأسئلة من ٤ إلى ٦.';
+ else for(let i=0;i<dq.length;i++){
+  if(!dq[i].q.trim()){err=`اكتبي نص السؤال ${ar(i+1)}.`;break;}
+  if(dq[i].type=='mc'&&dq[i].options.some(o=>!o.trim())){err=`أكملي خيارات السؤال ${ar(i+1)}.`;break;}
+ }
+ if(err){$('dErr').textContent=err;return;}
+ const p={id:'c'+Date.now(),custom:true,grade:+$('dGrade').value,level:+$('dLevel').value,title,text,
+  questions:dq.map(q=>({q:q.q.trim(),skill:q.skill,options:q.type=='tf'?['صح','خطأ']:q.options.map(o=>o.trim()),answer:q.answer}))};
+ const c=getCustom();c.push(p);localStorage.setItem('sanfour_custom',JSON.stringify(c));
+ grade=p.grade;level=p.level;alert('تم حفظ النص ✅ ستجدينه في قائمة الصف والمستوى المختارين.');goHome();
+}
+function renderMine(){
+ const c=getCustom();
+ $('myList').innerHTML=c.length?c.map(p=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid #eee;padding:8px 0"><span>✍️ ${esc(p.title)} — الصف ${GN[p.grade]} · المستوى ${ar(p.level)} · ${ar(p.questions.length)} أسئلة</span><button class="alt small" onclick="delPassage('${p.id}')">حذف</button></div>`).join(''):'<p class="note">لم تضيفي نصوصًا بعد.</p>';
+}
+function delPassage(id){if(confirm('حذف هذا النص؟')){localStorage.setItem('sanfour_custom',JSON.stringify(getCustom().filter(p=>p.id!=id)));renderMine();}}
+
+/* ---------- Reading session ---------- */
 function openPassage(id){
- P=PASSAGES.find(p=>p.id==id);
+ P=allPassages().find(p=>p.id==id);
  words=P.text.trim().split(/\s+/);errs=new Set();lastIdx=words.length-1;mode='err';phase='idle';elapsed=0;audioURL=null;
  $('ptitle').textContent=P.title;$('timer').textContent=ar(60);
  $('rnote').textContent='اضغط «ابدأ القراءة» واطلب من الطالب أن يقرأ بصوت مرتفع.';
@@ -148,7 +237,7 @@ function openPassage(id){
  renderWords();show('read');
 }
 function renderWords(){
- $('ptext').innerHTML=words.map((w,i)=>`<span class="w ${errs.has(i)?'err':''} ${phase=='score'&&i==lastIdx?'last':''} ${phase=='score'&&i>lastIdx?'after':''}" onclick="tapWord(${i})">${w}</span>`).join(' ');
+ $('ptext').innerHTML=words.map((w,i)=>`<span class="w ${errs.has(i)?'err':''} ${phase=='score'&&i==lastIdx?'last':''} ${phase=='score'&&i>lastIdx?'after':''}" onclick="tapWord(${i})">${esc(w)}</span>`).join(' ');
 }
 function tapWord(i){
  if(phase!='score')return;
@@ -195,7 +284,7 @@ function renderQ(){
  const q=P.questions[qi];
  $('qnum').textContent=`السؤال ${ar(qi+1)} من ${ar(P.questions.length)}`;
  $('qskill').textContent=q.skill;$('qtext').textContent=q.q;
- $('qopts').innerHTML=q.options.map((o,i)=>`<button class="opt" onclick="pick(${i},this)">${o}</button>`).join('');
+ $('qopts').innerHTML=q.options.map((o,i)=>`<button class="opt" onclick="pick(${i},this)">${esc(o)}</button>`).join('');
  $('nextQ').disabled=true;$('nextQ').textContent=qi==P.questions.length-1?'إنهاء':'التالي';
 }
 function pick(i,el){answers[qi]=i;document.querySelectorAll('.opt').forEach(b=>b.classList.remove('chosen'));el.classList.add('chosen');$('nextQ').disabled=false;}
@@ -221,7 +310,7 @@ function showSummary(){
 }
 function showHistory(){
  const h=JSON.parse(localStorage.getItem('sanfour_h')||'[]');
- $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${r.name}</td><td>${r.date}</td><td>${r.title}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
+ $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
  show('history');
 }
 function clearHistory(){if(confirm('مسح كل النتائج؟')){localStorage.removeItem('sanfour_h');showHistory();}}
