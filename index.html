@@ -607,6 +607,22 @@ function exportData(){
  a.download='sanfour-backup-'+new Date().toISOString().slice(0,10)+'.json';
  document.body.appendChild(a);a.click();a.remove();
 }
+ /* ---------- Fix: require last word + honest headline ---------- */
+const _sr=stopReading;
+window.stopReading=function(t){
+ const was=phase;_sr(t);if(was!=='reading')return;
+ lastIdx=-1;mode='last';$('modeBtn').classList.add('sel');
+ $('rnote').textContent='① اضغطي على آخر كلمة وصل إليها الطالب. ② ثم اضغطي على كل كلمة أخطأ فيها (تصبح برتقالية). ③ ثم اضغطي «احسب النتيجة».';
+ renderWords();
+};
+const _cr=calcResult;
+window.calcResult=function(){
+ if(lastIdx<0){alert('اضغطي أولًا على آخر كلمة قرأها الطالب.');return;}
+ _cr();
+ const ok=R.wcpm>=TARGETS[P.grade][P.level-1]&&R.acc>=95;
+ document.querySelector('#result h2').textContent=R.acc<90?'أحسنت المحاولة! واصل التدريب 🌱':ok?'قراءة رائعة! 🌟':'عمل جيد! استمر 💪';
+ if(R.secs<15)$('rstats').insertAdjacentHTML('beforeend','<p class="note" style="grid-column:1/-1;color:var(--c);font-weight:700">⚠️ القراءة كانت أقل من ١٥ ثانية، لذلك النتيجة تقديرية وغير دقيقة.</p>');
+};
  /* ---------- Free reading mode (no time limit) ---------- */
 let timed=localStorage.getItem('sanfour_timed')==='1';
 $('startBtn').insertAdjacentHTML('afterend','<button id="modeT" class="alt small" onclick="toggleTimed()"></button>');
