@@ -521,6 +521,61 @@ window.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
  renderParent(d);$('parent').classList.remove('hidden');
 });
+ /* ---------- Admin & user management ---------- */
+document.querySelector('main').insertAdjacentHTML('beforeend',`<section id="admin" class="hidden">
+ <div class="card"><h2>⚙️ إدارة المستخدمين</h2><div id="admList"></div></div>
+ <div class="card"><h2>إضافة مستخدم</h2>
+  <input id="admU" class="full" placeholder="اسم المستخدم">
+  <input id="admPin" class="full" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز (٤–٦ أرقام)">
+  <select id="admRole"><option value="doctor">دكتورة / معلمة</option><option value="admin">مدير</option></select>
+  <p class="note" id="admErr" style="color:var(--c);font-weight:700"></p>
+  <button onclick="addUser()">+ إضافة</button>
+ </div>
+ <div class="row"><button class="alt" onclick="goHome()">رجوع</button></div>
+</section>`);
+$('home').insertAdjacentHTML('afterbegin','<div class="row" id="userBar" style="justify-content:space-between;margin-top:8px"></div>');
+const saveUsers=u=>localStorage.setItem('sanfour_users',JSON.stringify(u));
+const meName=()=>sessionStorage.getItem('sanfour_user');
+const RN={admin:'مدير',doctor:'دكتورة / معلمة'};
+function fixRoles(){const u=getUsers();if(u.length&&!u.some(x=>x.role=='admin')){u.forEach((x,i)=>x.role=i==0?'admin':(x.role||'doctor'));saveUsers(u);}}
+const curRole=()=>(getUsers().find(x=>x.u==meName())||{}).role;
+function updateUserBar(){
+ fixRoles();
+ $('userBar').innerHTML=`<span style="font-size:19px">👤 ${esc(meName()||'')} · ${RN[curRole()]||''}</span>`+(curRole()=='admin'?'<button class="alt small" onclick="openAdmin()">⚙️ إدارة المستخدمين</button>':'');
+}
+function openAdmin(){if(curRole()!='admin'){alert('هذه الصفحة للمدير فقط.');return;}needPin(()=>{renderAdmin();show('admin');});}
+function renderAdmin(){
+ const users=getUsers(),me=meName();
+ $('admErr').textContent='';
+ $('admList').innerHTML='<table><tr><th>المستخدم</th><th>الدور</th><th></th></tr>'+users.map((x,i)=>`<tr><td>${esc(x.u)}${x.u==me?' (أنتِ)':''}</td><td><select onchange="setRole(${i},this.value)" ${x.u==me?'disabled':''}><option value="doctor" ${x.role!='admin'?'selected':''}>${RN.doctor}</option><option value="admin" ${x.role=='admin'?'selected':''}>${RN.admin}</option></select></td><td><div class="row"><button class="alt small" onclick="resetPin(${i})">تغيير الرمز</button>${x.u!=me?`<button class="alt small" onclick="delUser(${i})">حذف</button>`:''}</div></td></tr>`).join('')+'</table>';
+}
+function addUser(){
+ const u=$('admU').value.trim(),p=$('admPin').value.trim(),r=$('admRole').value,users=getUsers();
+ if(!u){$('admErr').textContent='اكتبي اسم المستخدم.';return;}
+ if(users.some(x=>x.u==u)){$('admErr').textContent='اسم المستخدم موجود مسبقًا.';return;}
+ if(!/^\d{4,6}$/.test(p)){$('admErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ users.push({u,pin:p,role:r});saveUsers(users);$('admU').value='';$('admPin').value='';renderAdmin();alert('تمت إضافة المستخدم ✅');
+}
+function setRole(i,r){
+ const users=getUsers();
+ if(r!='admin'&&users.filter(x=>x.role=='admin').length<=1&&users[i].role=='admin'){alert('يجب أن يبقى مدير واحد على الأقل.');renderAdmin();return;}
+ users[i].role=r;saveUsers(users);renderAdmin();
+}
+function resetPin(i){
+ const p=(prompt('الرمز الجديد (٤–٦ أرقام):')||'').trim();if(!p)return;
+ if(!/^\d{4,6}$/.test(p)){alert('الرمز من ٤ إلى ٦ أرقام.');return;}
+ const users=getUsers();users[i].pin=p;saveUsers(users);
+ if(users[i].u==meName())localStorage.setItem('sanfour_pin',p);
+ alert('تم تغيير الرمز ✅');
+}
+function delUser(i){
+ const users=getUsers();
+ if(users[i].role=='admin'&&users.filter(x=>x.role=='admin').length<=1){alert('لا يمكن حذف المدير الوحيد.');return;}
+ if(!confirm('حذف المستخدم «'+users[i].u+'»؟'))return;
+ users.splice(i,1);saveUsers(users);renderAdmin();
+}
+const _show3=show;window.show=function(id){$('admin').classList.toggle('hidden',id!=='admin');_show3(id);};
+const _enter=enterApp;window.enterApp=function(){_enter();updateUserBar();};
 migrate();renderHome();
 if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
 </script>
