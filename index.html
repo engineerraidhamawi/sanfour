@@ -650,6 +650,63 @@ window.stopReading=function(t){
   renderWords();
  }
 };
+ /* ---------- AI transcription assistant ---------- */
+let lastBlob=null,aiPause=new Set(),aiRep=new Set();
+(function(){
+ const css=document.createElement('style');
+ css.textContent='.w.aip{border-right:5px solid var(--y)}.w.air{text-decoration:underline wavy var(--t);text-decoration-thickness:3px}';
+ document.head.appendChild(css);
+ $('sbtns').insertAdjacentHTML('afterbegin','<button id="aiBtn" class="coral" onclick="aiAnalyze()">🤖 تحليل بالذكاء الاصطناعي</button>');
+ $('ptext').insertAdjacentHTML('afterend','<div id="aiOut" class="note"></div>');
+})();
+const _cou=URL.createObjectURL.bind(URL);
+URL.createObjectURL=function(o){if(o instanceof Blob&&/^(audio|video)/.test(o.type))lastBlob=o;return _cou(o);};
+const normAr=s=>String(s).replace(/[\u064B-\u0652\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0621-\u064A]/g,'');
+function alignAI(P,H){
+ const m=P.length,n=H.length,D=[],B=[];
+ for(let i=0;i<=m;i++){D[i]=new Array(n+1);B[i]=new Array(n+1);}
+ for(let i=0;i<=m;i++)for(let j=0;j<=n;j++){
+  if(!i&&!j){D[0][0]=0;B[0][0]='';continue;}
+  let best=Infinity,b='';
+  if(i&&j){const c=D[i-1][j-1]+(P[i-1]==H[j-1]?0:1);if(c<best){best=c;b=P[i-1]==H[j-1]?'m':'s';}}
+  if(i&&D[i-1][j]+1<best){best=D[i-1][j]+1;b='d';}
+  if(j&&D[i][j-1]+1<best){best=D[i][j-1]+1;b='i';}
+  D[i][j]=best;B[i][j]=b;}
+ let ie=0;for(let i=0;i<=m;i++)if(D[i][n]<=D[ie][n])ie=i;
+ const ops=[];let i=ie,j=n;
+ while(i>0||j>0){const b=B[i][j];ops.unshift({op:b,p:b=='i'?-1:i-1,h:b=='d'?-1:j-1});if(b=='m'||b=='s'){i--;j--;}else if(b=='d')i--;else j--;}
+ return ops;
+}
+function applyAI(hw,text){
+ hw=hw.filter(w=>normAr(w.word));
+ const ops=alignAI(words.map(normAr),hw.map(w=>normAr(w.word)));
+ errs=new Set();aiPause=new Set();aiRep=new Set();
+ let last=-1;ops.forEach(o=>{if(o.op=='m'||o.op=='s')last=o.p;});
+ let prevP=-1;
+ ops.forEach(o=>{
+  if(o.op=='s')errs.add(o.p);
+  if(o.op=='d'&&o.p<=last)errs.add(o.p);
+  if(o.op=='i'&&prevP>=0)aiRep.add(prevP);
+  if(o.p>=0&&o.h>0&&(hw[o.h].start-hw[o.h-1].end)>2)aiPause.add(o.p);
+  if(o.p>=0)prevP=o.p;
+ });
+ if(last>=0){lastIdx=last;mode='err';$('modeBtn').classList.remove('sel');}
+ renderWords();
+ $('aiOut').innerHTML=`<div class="card" style="background:var(--bg);margin:10px 0 0"><b>🤖 اقتراحات الذكاء الاصطناعي:</b> ${ar(errs.size)} خطأ مقترح · ${ar(aiPause.size)} توقف طويل · ${ar(aiRep.size)} تكرار محتمل<br>🟧 خطأ مقترح · <span style="border-right:5px solid var(--y);padding-right:4px">توقف طويل قبل الكلمة</span> · <span style="text-decoration:underline wavy var(--t)">تكرار محتمل</span><br>راجعي الاقتراحات، واضغطي على أي كلمة لإضافة خطأ أو إزالته قبل حساب النتيجة.<br><br><b>ما سمعه الذكاء الاصطناعي:</b> ${esc(text)}</div>`;
+}
+const _rw=renderWords;window.renderWords=function(){_rw();document.querySelectorAll('#ptext .w').forEach((el,i)=>{el.classList.toggle('aip',aiPause.has(i));el.classList.toggle('air',aiRep.has(i));});};
+const _op=openPassage;window.openPassage=function(id){lastBlob=null;aiPause=new Set();aiRep=new Set();if($('aiOut'))$('aiOut').innerHTML='';_op(id);};
+async function aiAnalyze(){
+ if(!lastBlob){alert('لا يوجد تسجيل صوتي لهذه القراءة. تأكدي من السماح باستخدام الميكروفون.');return;}
+ const b=$('aiBtn');b.disabled=true;b.textContent='⏳ جارٍ التحليل…';
+ try{
+  const r=await fetch('/api/transcribe',{method:'POST',headers:{'Content-Type':lastBlob.type||'audio/webm'},body:lastBlob});
+  let j={};try{j=await r.json();}catch(e){throw new Error('خدمة الذكاء الاصطناعي غير متاحة على هذا الرابط.');}
+  if(!r.ok)throw new Error(j.error||'خطأ غير معروف');
+  applyAI(j.words||[],j.text||'');
+ }catch(e){alert('تعذّر التحليل الآلي: '+e.message+'\nيمكنك متابعة التصحيح يدويًّا.');}
+ b.disabled=false;b.textContent='🤖 تحليل بالذكاء الاصطناعي';
+}
  migrate();renderHome();
 if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
 </script>
