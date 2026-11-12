@@ -892,6 +892,48 @@ window.addParentCard=function(){
  if(!profSid||$('pdfCard')||!getHist().some(r=>r.sid==profSid))return;
  $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="pdfCard"><h2>🖨️ تقرير PDF للطالب</h2><p class="note">تقرير جاهز للطباعة أو الحفظ بصيغة PDF: الملخص، الرسوم البيانية، المهارات، أنواع الأخطاء، والتوصية.</p><textarea id="repNotes" rows="3" placeholder="ملاحظات الدكتورة (اختياري) — تظهر في التقرير"></textarea><div class="row" style="margin-top:8px"><button onclick="printReport()">🖨️ إنشاء التقرير</button></div></div>`);
 };
+ /* ========== Model reading audio ========== */
+let mAudio=null,mTimer=null,heard=false;
+(function(){const c=document.createElement('style');c.textContent='.w.hl{background:var(--y);color:var(--s)}';document.head.appendChild(c);})();
+$('startBtn').insertAdjacentHTML('beforebegin','<button id="modelBtn" class="yellow" onclick="toggleModel()">🔊 استمع للقراءة النموذجية</button>');
+$('rnote').insertAdjacentHTML('afterend','<p class="note" style="font-size:15px">💡 للتقييم الرسمي: اقرأ أولًا ثم استمع. الاستماع قبل القراءة مفيد للتدريب لكنه يرفع النتيجة.</p>');
+function stopModel(){
+ if(mAudio){mAudio.pause();mAudio=null;}
+ clearInterval(mTimer);
+ document.querySelectorAll('#ptext .w.hl').forEach(e=>e.classList.remove('hl'));
+ const b=$('modelBtn');if(b)b.textContent='🔊 استمع للقراءة النموذجية';
+}
+function toggleModel(){
+ if(mAudio){stopModel();return;}
+ if(!P||!/^b\d-\d$/.test(P.id)){alert('لا يوجد تسجيل نموذجي لهذا النص.');return;}
+ mAudio=new Audio('audio/'+P.id+'.mp3');
+ const wts=words.map(w=>w.replace(/[\u064B-\u0652\u0670]/g,'').length+2),tot=wts.reduce((a,b)=>a+b,0),cum=[];
+ let s=0;wts.forEach(x=>{s+=x;cum.push(s/tot);});
+ mAudio.onerror=()=>{stopModel();alert('لم يتم العثور على التسجيل النموذجي لهذا النص.');};
+ mAudio.onended=stopModel;
+ mAudio.play().then(()=>{
+  if(phase=='idle')heard=true;
+  $('modelBtn').textContent='⏹ إيقاف';
+  mTimer=setInterval(()=>{
+   if(!mAudio||!mAudio.duration)return;
+   const f=mAudio.currentTime/mAudio.duration;let i=cum.findIndex(c=>c>=f);if(i<0)i=words.length-1;
+   document.querySelectorAll('#ptext .w').forEach((e,k)=>e.classList.toggle('hl',k==i));
+  },120);
+ }).catch(()=>{stopModel();alert('تعذّر تشغيل الصوت.');});
+}
+const _op4=openPassage;
+window.openPassage=function(id){stopModel();heard=false;_op4(id);$('modelBtn').classList.remove('hidden');};
+const _st4=startReading;
+window.startReading=async function(){stopModel();await _st4();if(phase=='reading')$('modelBtn').classList.add('hidden');};
+const _ss4=showSummary;
+window.showSummary=function(){
+ _ss4();
+ const old=$('heardNote');if(old)old.remove();
+ if(heard){
+  const h=getHist();if(h[0]){h[0].heard=true;saveHist(h);}
+  const c=$('etCard')||$('skills').closest('.card');
+  c.insertAdjacentHTML('afterend','<div class="card" id="heardNote"><p style="color:var(--c);font-weight:700;margin:0">🔊 استمع الطالب للقراءة النموذجية قبل هذه الجلسة، لذلك قد تكون النتيجة أعلى من مستواه الفعلي.</p></div>');
+ }
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
