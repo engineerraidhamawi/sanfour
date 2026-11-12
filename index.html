@@ -708,7 +708,72 @@ function resetConsent(){
  if(!confirm('سيُطلب من ولي الأمر تحديد الموافقة من جديد قبل القراءة القادمة. متابعة؟'))return;
  setConsent(profSid,null);openProfile(profSid);
 }
-/* ========== Start ========== */
+/* ========== Cloud sync (Vercel) ========== */
+let cToken=localStorage.getItem('sfc_token')||'',cEmail=localStorage.getItem('sfc_email')||'',syncT=null,syncing=false,applying=false;
+const _lsSet=Storage.prototype.setItem,_lsRem=Storage.prototype.removeItem;
+const CLOUD_SKIP=['sanfour_cloud_ts','sanfour_dirty'];
+const watched=k=>String(k).startsWith('sanfour_')&&!CLOUD_SKIP.includes(k);
+Storage.prototype.setItem=function(k,v){_lsSet.call(this,k,v);if(this===localStorage&&!applying&&watched(k)){_lsSet.call(localStorage,'sanfour_dirty','1');schedulePush();}};
+Storage.prototype.removeItem=function(k){_lsRem.call(this,k);if(this===localStorage&&!applying&&watched(k)){_lsSet.call(localStorage,'sanfour_dirty','1');schedulePush();}};
+function schedulePush(){if(!cToken)return;clearTimeout(syncT);syncT=setTimeout(()=>cloudPush(false),2000);}
+async function capi(body){
+ const r=await fetch('/api/cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ let j={};try{j=await r.json();}catch(e){throw new Error('خدمة السحابة غير متاحة على هذا الرابط');}
+ if(!r.ok)throw new Error(j.error||'خطأ غير معروف');return j;
+}
+function localSnapshot(){const d={};Object.keys(localStorage).filter(watched).forEach(k=>d[k]=localStorage.getItem(k));return d;}
+function applySnapshot(d){applying=true;Object.keys(localStorage).filter(watched).forEach(k=>localStorage.removeItem(k));Object.entries(d||{}).forEach(([k,v])=>localStorage.setItem(k,v));applying=false;}
+document.body.insertAdjacentHTML('beforeend',`<div id="cloudBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px"><div class="card" style="max-width:480px;width:100%"><div class="row" style="justify-content:space-between"><h2>☁️ المزامنة السحابية</h2><button class="alt small" onclick="$('cloudBox').classList.add('hidden')">إغلاق</button></div><div id="cloudBody"></div></div></div>`);
+$('loginGate').querySelector('.card').insertAdjacentHTML('beforeend','<p><a href="#" class="note" onclick="openCloud();return false">☁️ استعادة بياناتي من السحابة</a></p>');
+$('admin').insertAdjacentHTML('afterbegin','<div class="card"><h2>☁️ المزامنة السحابية</h2><p class="note">احفظي البيانات في السحابة تلقائيًّا وزامنيها بين أجهزتك.</p><button onclick="openCloud()">فتح إعدادات السحابة</button></div>');
+function openCloud(){renderCloud();$('cloudBox').classList.remove('hidden');}
+function setCloudMsg(t){const m=$('cloudMsg');if(m)m.textContent=t;else alert(t);}
+function renderCloud(){
+ const b=$('cloudBody');if(!b)return;
+ const ts=+(localStorage.getItem('sanfour_cloud_ts')||0),dirty=localStorage.getItem('sanfour_dirty');
+ b.innerHTML=cToken
+ ?`<p style="font-size:19px">✅ متصل: <span dir="ltr">${esc(cEmail)}</span></p><p class="note">آخر مزامنة: ${ts?new Date(ts).toLocaleString('ar'):'—'}${dirty?' · ⏳ تغييرات بانتظار الرفع':' · ✔️ كل شيء محفوظ'}</p><div class="row"><button onclick="cloudPush(true)">⬆️ رفع الآن</button><button class="alt" onclick="cloudPull(false)">⬇️ تنزيل من السحابة</button><button class="alt small" onclick="cloudSignOut()">خروج سحابي</button></div><p class="note" id="cloudMsg"></p>`
+ :`<p class="note">سجّلي الدخول ليتم حفظ كل البيانات تلقائيًّا في السحابة ومزامنتها بين أجهزتك.</p><input id="cbEmail" class="full" type="email" placeholder="البريد الإلكتروني" dir="ltr"><input id="cbPass" class="full" type="password" placeholder="كلمة المرور (٨ أحرف على الأقل)" dir="ltr"><input id="cbCode" class="full" placeholder="رمز الدعوة (لإنشاء حساب جديد فقط)" dir="ltr"><div class="row"><button onclick="cloudAuth(false)">دخول</button><button class="alt" onclick="cloudAuth(true)">إنشاء حساب سحابي</button></div><p class="note" id="cloudMsg"></p>`;
+}
+function cloudForget(){cToken='';cEmail='';_lsRem.call(localStorage,'sfc_token');_lsRem.call(localStorage,'sfc_email');renderCloud();}
+async function cloudAuth(signup){
+ const e=$('cbEmail').value.trim(),p=$('cbPass').value,c=$('cbCode').value.trim();
+ if(!e||!p)return setCloudMsg('اكتبي البريد وكلمة المرور.');
+ if(signup&&!c)return setCloudMsg('اكتبي رمز الدعوة لإنشاء حساب جديد.');
+ try{
+  const j=await capi({action:signup?'signup':'login',email:e,password:p,code:c});
+  cToken=j.token;cEmail=j.email;_lsSet.call(localStorage,'sfc_token',cToken);_lsSet.call(localStorage,'sfc_email',cEmail);
+  renderCloud();
+  if(signup)await cloudPush(true);else await cloudPull(false);
+ }catch(err){setCloudMsg(err.message);}
+}
+async function cloudPush(manual){
+ if(!cToken||syncing)return;
+ syncing=true;
+ try{
+  const j=await capi({action:'push',token:cToken,data:localSnapshot()});
+  _lsSet.call(localStorage,'sanfour_cloud_ts',String(j.updated_at));_lsRem.call(localStorage,'sanfour_dirty');
+  renderCloud();if(manual)setCloudMsg('تم الرفع ✅');
+ }catch(e){if(/الجلسة/.test(e.message))cloudForget();setCloudMsg('خطأ في الرفع: '+e.message);}
+ finally{syncing=false;}
+}
+async function cloudPull(auto){
+ if(!cToken)return;
+ try{
+  const j=await capi({action:'pull',token:cToken});
+  if(!j.data){await cloudPush(false);return;}
+  const remoteTs=+j.updated_at,localTs=+(localStorage.getItem('sanfour_cloud_ts')||0),dirty=localStorage.getItem('sanfour_dirty');
+  if(auto&&remoteTs<=localTs){if(dirty)cloudPush(false);return;}
+  if(dirty&&!confirm('توجد نسخة في السحابة. هل تريدين استبدال بيانات هذا الجهاز بنسخة السحابة؟\n(اختاري «إلغاء» لرفع بيانات هذا الجهاز إلى السحابة بدلًا من ذلك)')){await cloudPush(true);return;}
+  applySnapshot(j.data);
+  _lsSet.call(localStorage,'sanfour_cloud_ts',String(remoteTs));_lsRem.call(localStorage,'sanfour_dirty');
+  if(!auto){sessionStorage.clear();alert('تم تنزيل بياناتك من السحابة ✅ سجّلي الدخول بحسابك في التطبيق.');}
+  location.reload();
+ }catch(e){if(/الجلسة/.test(e.message))cloudForget();setCloudMsg('خطأ: '+e.message);}
+}
+async function cloudSignOut(){try{await capi({action:'logout',token:cToken});}catch(e){}cloudForget();}
+if(cToken)cloudPull(true);
+ /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
   try{const d=b64d(location.hash.slice(8));$('loginGate').classList.add('hidden');renderParent(d);show('parent');}catch(e){}
