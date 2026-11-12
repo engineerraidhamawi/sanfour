@@ -708,8 +708,8 @@ function resetConsent(){
  if(!confirm('سيُطلب من ولي الأمر تحديد الموافقة من جديد قبل القراءة القادمة. متابعة؟'))return;
  setConsent(profSid,null);openProfile(profSid);
 }
-/* ========== Cloud sync (Vercel) ========== */
-let cToken=localStorage.getItem('sfc_token')||'',cEmail=localStorage.getItem('sfc_email')||'',syncT=null,syncing=false,applying=false;
+/* ========== Cloud sync + clinics (Vercel) ========== */
+let cToken=localStorage.getItem('sfc_token')||'',cEmail=localStorage.getItem('sfc_email')||'',cRole=localStorage.getItem('sfc_role')||'',cClinic=localStorage.getItem('sfc_clinic')||'',syncT=null,syncing=false,applying=false;
 const _lsSet=Storage.prototype.setItem,_lsRem=Storage.prototype.removeItem;
 const CLOUD_SKIP=['sanfour_cloud_ts','sanfour_dirty'];
 const watched=k=>String(k).startsWith('sanfour_')&&!CLOUD_SKIP.includes(k);
@@ -719,59 +719,104 @@ function schedulePush(){if(!cToken)return;clearTimeout(syncT);syncT=setTimeout((
 async function capi(body){
  const r=await fetch('/api/cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
  let j={};try{j=await r.json();}catch(e){throw new Error('خدمة السحابة غير متاحة على هذا الرابط');}
+ if(r.status===409&&j.error==='conflict'){const e=new Error('conflict');e.conflict=j;throw e;}
  if(!r.ok)throw new Error(j.error||'خطأ غير معروف');return j;
 }
 function localSnapshot(){const d={};Object.keys(localStorage).filter(watched).forEach(k=>d[k]=localStorage.getItem(k));return d;}
 function applySnapshot(d){applying=true;Object.keys(localStorage).filter(watched).forEach(k=>localStorage.removeItem(k));Object.entries(d||{}).forEach(([k,v])=>localStorage.setItem(k,v));applying=false;}
-document.body.insertAdjacentHTML('beforeend',`<div id="cloudBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px"><div class="card" style="max-width:480px;width:100%"><div class="row" style="justify-content:space-between"><h2>☁️ المزامنة السحابية</h2><button class="alt small" onclick="$('cloudBox').classList.add('hidden')">إغلاق</button></div><div id="cloudBody"></div></div></div>`);
+function mergeArr(a,b,key){const m=new Map();(b||[]).forEach(x=>m.set(key(x),x));(a||[]).forEach(x=>m.set(key(x),x));return [...m.values()];}
+function mergeSnap(loc,rem){
+ const out=Object.assign({},rem,loc),J=(o,k)=>{try{return JSON.parse(o[k]||'[]');}catch(e){return [];}},JO=(o,k)=>{try{return JSON.parse(o[k]||'{}');}catch(e){return {};}};
+ const tl=JO(loc,'sanfour_tomb'),tr=JO(rem,'sanfour_tomb'),U=k=>[...new Set([...(tl[k]||[]),...(tr[k]||[])])],T={s:U('s'),p:U('p'),u:U('u')};
+ out.sanfour_students=JSON.stringify(mergeArr(J(loc,'sanfour_students'),J(rem,'sanfour_students'),x=>x.id).filter(x=>!T.s.includes(x.id)));
+ out.sanfour_h=JSON.stringify(mergeArr(J(loc,'sanfour_h'),J(rem,'sanfour_h'),x=>x.sid+'|'+(x.ts||(x.date+'|'+x.wcpm+'|'+x.acc+'|'+x.comp))+'|'+x.title).filter(x=>!T.s.includes(x.sid)).sort((a,b)=>(b.ts||0)-(a.ts||0)));
+ out.sanfour_custom=JSON.stringify(mergeArr(J(loc,'sanfour_custom'),J(rem,'sanfour_custom'),x=>x.id).filter(x=>!T.p.includes(x.id)));
+ out.sanfour_users=JSON.stringify(mergeArr(J(loc,'sanfour_users'),J(rem,'sanfour_users'),x=>x.u).filter(x=>!T.u.includes(x.u)));
+ out.sanfour_tomb=JSON.stringify(T);
+ return out;
+}
+function tombAdd(t,id){const o=JSON.parse(localStorage.getItem('sanfour_tomb')||'{}');o[t]=o[t]||[];if(!o[t].includes(id))o[t].push(id);localStorage.setItem('sanfour_tomb',JSON.stringify(o));}
+const _ds=deleteStudent;window.deleteStudent=function(){const id=profSid,n=getStudents().length;_ds();if(getStudents().length<n)tombAdd('s',id);};
+const _dp=delPassage;window.delPassage=function(id){const n=getCustom().length;_dp(id);if(getCustom().length<n)tombAdd('p',id);};
+const _du=delUser;window.delUser=function(i){const nm=(getUsers()[i]||{}).u,n=getUsers().length;_du(i);if(getUsers().length<n&&nm)tombAdd('u',nm);};
+function setCloudInfo(j){if(j.role){cRole=j.role;_lsSet.call(localStorage,'sfc_role',cRole);}if(j.clinic){cClinic=j.clinic.name||'';_lsSet.call(localStorage,'sfc_clinic',cClinic);}}
+document.body.insertAdjacentHTML('beforeend',`<div id="cloudBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px;overflow:auto"><div class="card" style="max-width:560px;width:100%;max-height:92vh;overflow:auto"><div class="row" style="justify-content:space-between"><h2>☁️ السحابة والعيادة</h2><button class="alt small" onclick="$('cloudBox').classList.add('hidden')">إغلاق</button></div><div id="cloudBody"></div><div id="clinicBody"></div></div></div>`);
 $('loginGate').querySelector('.card').insertAdjacentHTML('beforeend','<p><a href="#" class="note" onclick="openCloud();return false">☁️ استعادة بياناتي من السحابة</a></p>');
-$('admin').insertAdjacentHTML('afterbegin','<div class="card"><h2>☁️ المزامنة السحابية</h2><p class="note">احفظي البيانات في السحابة تلقائيًّا وزامنيها بين أجهزتك.</p><button onclick="openCloud()">فتح إعدادات السحابة</button></div>');
-function openCloud(){renderCloud();$('cloudBox').classList.remove('hidden');}
+$('admin').insertAdjacentHTML('afterbegin','<div class="card"><h2>☁️ السحابة والعيادة</h2><p class="note">مزامنة البيانات بين الأجهزة، وإدارة أعضاء العيادة.</p><button onclick="openCloud()">فتح إعدادات السحابة</button></div>');
+function openCloud(){renderCloud();$('clinicBody').innerHTML='';$('cloudBox').classList.remove('hidden');}
 function setCloudMsg(t){const m=$('cloudMsg');if(m)m.textContent=t;else alert(t);}
+const RN2={admin:'مدير العيادة',doctor:'دكتورة / معلمة'};
 function renderCloud(){
  const b=$('cloudBody');if(!b)return;
  const ts=+(localStorage.getItem('sanfour_cloud_ts')||0),dirty=localStorage.getItem('sanfour_dirty');
  b.innerHTML=cToken
- ?`<p style="font-size:19px">✅ متصل: <span dir="ltr">${esc(cEmail)}</span></p><p class="note">آخر مزامنة: ${ts?new Date(ts).toLocaleString('ar'):'—'}${dirty?' · ⏳ تغييرات بانتظار الرفع':' · ✔️ كل شيء محفوظ'}</p><div class="row"><button onclick="cloudPush(true)">⬆️ رفع الآن</button><button class="alt" onclick="cloudPull(false)">⬇️ تنزيل من السحابة</button><button class="alt small" onclick="cloudSignOut()">خروج سحابي</button></div><p class="note" id="cloudMsg"></p>`
- :`<p class="note">سجّلي الدخول ليتم حفظ كل البيانات تلقائيًّا في السحابة ومزامنتها بين أجهزتك.</p><input id="cbEmail" class="full" type="email" placeholder="البريد الإلكتروني" dir="ltr"><input id="cbPass" class="full" type="password" placeholder="كلمة المرور (٨ أحرف على الأقل)" dir="ltr"><input id="cbCode" class="full" placeholder="رمز الدعوة (لإنشاء حساب جديد فقط)" dir="ltr"><div class="row"><button onclick="cloudAuth(false)">دخول</button><button class="alt" onclick="cloudAuth(true)">إنشاء حساب سحابي</button></div><p class="note" id="cloudMsg"></p>`;
+ ?`<p style="font-size:19px;margin:4px 0">✅ متصل: <span dir="ltr">${esc(cEmail)}</span></p><p style="margin:4px 0">🏥 العيادة: <b>${esc(cClinic||'—')}</b> · ${RN2[cRole]||''}</p><p class="note">آخر مزامنة: ${ts?new Date(ts).toLocaleString('ar'):'—'}${dirty?' · ⏳ تغييرات بانتظار الرفع':' · ✔️ كل شيء محفوظ'}</p><div class="row"><button onclick="cloudPush(true)">⬆️ رفع الآن</button><button class="alt" onclick="cloudPull(false)">⬇️ تحديث من السحابة</button>${cRole=='admin'?'<button class="yellow" onclick="clinicMembers()">👥 أعضاء العيادة</button>':''}<button class="alt small" onclick="cloudSignOut()">خروج سحابي</button></div><p class="note" id="cloudMsg"></p>`
+ :`<p class="note">سجّلي الدخول ببريدك ليتم حفظ البيانات في السحابة ومشاركتها مع عيادتك.</p><input id="cbEmail" class="full" type="email" placeholder="البريد الإلكتروني" dir="ltr"><input id="cbPass" class="full" type="password" placeholder="كلمة المرور (٨ أحرف على الأقل)" dir="ltr"><input id="cbCode" class="full" placeholder="رمز الدعوة (لحساب جديد فقط — غير مطلوب إذا دعتكِ عيادة)" dir="ltr"><div class="row"><button onclick="cloudAuth(false)">دخول</button><button class="alt" onclick="cloudAuth(true)">إنشاء حساب سحابي</button></div><p class="note" id="cloudMsg"></p>`;
 }
-function cloudForget(){cToken='';cEmail='';_lsRem.call(localStorage,'sfc_token');_lsRem.call(localStorage,'sfc_email');renderCloud();}
+function cloudForget(){cToken='';cEmail='';cRole='';cClinic='';['sfc_token','sfc_email','sfc_role','sfc_clinic'].forEach(k=>_lsRem.call(localStorage,k));if($('clinicBody'))$('clinicBody').innerHTML='';renderCloud();}
 async function cloudAuth(signup){
  const e=$('cbEmail').value.trim(),p=$('cbPass').value,c=$('cbCode').value.trim();
  if(!e||!p)return setCloudMsg('اكتبي البريد وكلمة المرور.');
- if(signup&&!c)return setCloudMsg('اكتبي رمز الدعوة لإنشاء حساب جديد.');
  try{
   const j=await capi({action:signup?'signup':'login',email:e,password:p,code:c});
-  cToken=j.token;cEmail=j.email;_lsSet.call(localStorage,'sfc_token',cToken);_lsSet.call(localStorage,'sfc_email',cEmail);
-  renderCloud();
-  if(signup)await cloudPush(true);else await cloudPull(false);
+  cToken=j.token;cEmail=j.email;_lsSet.call(localStorage,'sfc_token',cToken);_lsSet.call(localStorage,'sfc_email',cEmail);setCloudInfo(j);
+  renderCloud();await cloudPull(false);
  }catch(err){setCloudMsg(err.message);}
 }
-async function cloudPush(manual){
- if(!cToken||syncing)return;
+async function cloudPush(manual,retry){
+ if(!cToken||(syncing&&!retry))return;
  syncing=true;
  try{
-  const j=await capi({action:'push',token:cToken,data:localSnapshot()});
+  const j=await capi({action:'push',token:cToken,data:localSnapshot(),base:+(localStorage.getItem('sanfour_cloud_ts')||0)});
   _lsSet.call(localStorage,'sanfour_cloud_ts',String(j.updated_at));_lsRem.call(localStorage,'sanfour_dirty');
   renderCloud();if(manual)setCloudMsg('تم الرفع ✅');
- }catch(e){if(/الجلسة/.test(e.message))cloudForget();setCloudMsg('خطأ في الرفع: '+e.message);}
- finally{syncing=false;}
+ }catch(e){
+  if(e.conflict&&!retry){
+   applySnapshot(mergeSnap(localSnapshot(),e.conflict.data||{}));
+   _lsSet.call(localStorage,'sanfour_cloud_ts',String(e.conflict.updated_at));
+   return await cloudPush(manual,true);
+  }
+  if(/الجلسة|أُزيل/.test(e.message))cloudForget();
+  setCloudMsg('خطأ في الرفع: '+e.message);
+ }finally{syncing=false;}
 }
 async function cloudPull(auto){
  if(!cToken)return;
  try{
-  const j=await capi({action:'pull',token:cToken});
-  if(!j.data){await cloudPush(false);return;}
+  const j=await capi({action:'pull',token:cToken});setCloudInfo(j);
+  if(!j.data){await cloudPush(false);renderCloud();return;}
   const remoteTs=+j.updated_at,localTs=+(localStorage.getItem('sanfour_cloud_ts')||0),dirty=localStorage.getItem('sanfour_dirty');
-  if(auto&&remoteTs<=localTs){if(dirty)cloudPush(false);return;}
-  if(dirty&&!confirm('توجد نسخة في السحابة. هل تريدين استبدال بيانات هذا الجهاز بنسخة السحابة؟\n(اختاري «إلغاء» لرفع بيانات هذا الجهاز إلى السحابة بدلًا من ذلك)')){await cloudPush(true);return;}
+  if(remoteTs<=localTs){if(dirty)await cloudPush(false);renderCloud();return;}
+  if(dirty&&localStorage.getItem('sanfour_users')){
+   applySnapshot(mergeSnap(localSnapshot(),j.data));
+   _lsSet.call(localStorage,'sanfour_cloud_ts',String(remoteTs));
+   await cloudPush(false);renderCloud();
+   if(!auto)setCloudMsg('تم دمج بيانات هذا الجهاز مع بيانات العيادة ✅');
+   return;
+  }
   applySnapshot(j.data);
   _lsSet.call(localStorage,'sanfour_cloud_ts',String(remoteTs));_lsRem.call(localStorage,'sanfour_dirty');
-  if(!auto){sessionStorage.clear();alert('تم تنزيل بياناتك من السحابة ✅ سجّلي الدخول بحسابك في التطبيق.');}
+  if(!auto){sessionStorage.clear();alert('تم تنزيل بيانات العيادة ✅ سجّلي الدخول بحسابك في التطبيق.');}
   location.reload();
- }catch(e){if(/الجلسة/.test(e.message))cloudForget();setCloudMsg('خطأ: '+e.message);}
+ }catch(e){if(/الجلسة|أُزيل/.test(e.message))cloudForget();setCloudMsg('خطأ: '+e.message);}
 }
 async function cloudSignOut(){try{await capi({action:'logout',token:cToken});}catch(e){}cloudForget();}
+async function clinicMembers(){
+ const b=$('clinicBody');b.innerHTML='<p class="note">جارٍ التحميل…</p>';
+ try{
+  const j=await capi({action:'members',token:cToken});
+  b.innerHTML=`<hr><h3>🏥 اسم العيادة</h3><div class="row"><input id="clName" class="full" style="max-width:280px" value="${esc(j.name||'')}"><button class="alt small" onclick="clinicRename()">حفظ</button></div>
+<h3>👥 أعضاء العيادة</h3><table><tr><th>البريد</th><th>الدور</th><th></th></tr>${Object.entries(j.members).map(([e,r])=>`<tr><td dir="ltr" style="text-align:left">${esc(e)}</td><td><select onchange="clinicRole('${esc(e)}',this.value)" ${e==cEmail?'disabled':''}><option value="doctor" ${r!='admin'?'selected':''}>${RN2.doctor}</option><option value="admin" ${r=='admin'?'selected':''}>${RN2.admin}</option></select></td><td>${e!=cEmail?`<button class="alt small" onclick="clinicRemove('${esc(e)}')">إزالة</button>`:'(أنتِ)'}</td></tr>`).join('')}</table>
+${(j.invites||[]).length?`<p class="note">⏳ دعوات بانتظار التسجيل: <span dir="ltr">${j.invites.map(esc).join('، ')}</span></p>`:''}
+<h3>✉️ دعوة دكتورة</h3><input id="invEmail" class="full" type="email" dir="ltr" placeholder="بريد الدكتورة الإلكتروني"><div class="row"><select id="invRole"><option value="doctor">${RN2.doctor}</option><option value="admin">${RN2.admin}</option></select><button onclick="clinicInvite()">إرسال الدعوة</button></div>
+<p class="note">بعد الدعوة: تفتح الدكتورة التطبيق ← «☁️ استعادة بياناتي من السحابة» ← «إنشاء حساب سحابي» ببريدها (بدون رمز دعوة)، أو «دخول» إن كان لديها حساب، فتنضم إلى العيادة تلقائيًّا.</p><p class="note" id="clMsg" style="font-weight:700"></p>`;
+ }catch(e){b.innerHTML='<p class="note">'+esc(e.message)+'</p>';}
+}
+async function clinicAct(body,msg){try{await capi(Object.assign({token:cToken},body));await clinicMembers();if(msg&&$('clMsg'))$('clMsg').textContent=msg;}catch(e){alert(e.message);}}
+function clinicInvite(){const e=$('invEmail').value.trim();if(!e)return;clinicAct({action:'invite',email:e,role:$('invRole').value},'تمت الدعوة ✅');}
+function clinicRemove(e){if(confirm('إزالة '+e+' من العيادة؟ ستتوقف مزامنتها مع بيانات العيادة.'))clinicAct({action:'remove',email:e},'تمت الإزالة ✅');}
+function clinicRole(e,r){clinicAct({action:'setrole',email:e,role:r},'تم تغيير الدور ✅');}
+async function clinicRename(){const n=$('clName').value.trim();if(!n)return;await clinicAct({action:'rename',name:n},'تم حفظ الاسم ✅');cClinic=n;_lsSet.call(localStorage,'sfc_clinic',n);renderCloud();}
 if(cToken)cloudPull(true);
  /* ========== Error types & disfluency ========== */
 const ETYPES=['حركة (تشكيل)','حرف متشابه','همزة / تاء مربوطة','حرف مدّ','لام شمسية / قمرية','استبدال كلمة','حذف كلمة','قلب حروف','سابقة / لاحقة','غير مصنّف'];
