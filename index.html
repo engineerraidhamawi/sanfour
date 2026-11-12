@@ -933,6 +933,7 @@ window.showSummary=function(){
   const h=getHist();if(h[0]){h[0].heard=true;saveHist(h);}
   const c=$('etCard')||$('skills').closest('.card');
   c.insertAdjacentHTML('afterend','<div class="card" id="heardNote"><p style="color:var(--c);font-weight:700;margin:0">🔊 استمع الطالب للقراءة النموذجية قبل هذه الجلسة، لذلك قد تكون النتيجة أعلى من مستواه الفعلي.</p></div>');
+ }
  };
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
