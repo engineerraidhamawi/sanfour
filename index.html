@@ -936,33 +936,36 @@ window.showSummary=function(){
  }
  };
  /* ========== Microphone check ========== */
-document.body.insertAdjacentHTML('beforeend',`<div id="micBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:160;padding:16px"><div class="card" style="max-width:480px;width:100%;text-align:center"><h2>🎙️ اختبار الميكروفون</h2><p id="micStep" style="font-size:20px"></p><div style="background:#eee;border-radius:999px;height:22px;overflow:hidden;margin:14px 0"><div id="micBar" style="height:100%;width:0;background:var(--t);transition:width .1s"></div></div><p id="micMsg" style="font-size:18px"></p><div class="row" style="justify-content:center"><button id="micGo" class="hidden" onclick="micDone()">✅ ابدأ القراءة</button><button class="alt" onclick="micTest()">↻ إعادة الاختبار</button><button class="alt small" onclick="micDone()">تخطّي</button></div></div></div>`);
-$('modeT').insertAdjacentHTML('afterend','<button id="micT" class="alt small" onclick="sessionStorage.removeItem(\'sanfour_micok\');micTest()">🎙️ اختبار الميكروفون</button>');
-let micStream=null,micCtx=null,micRAF=null;
+document.body.insertAdjacentHTML('beforeend',`<div id="micBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:160;padding:16px"><div class="card" style="max-width:480px;width:100%;text-align:center"><h2>🎙️ اختبار الميكروفون</h2><p id="micStep" style="font-size:20px"></p><div style="background:#eee;border-radius:999px;height:22px;overflow:hidden;margin:14px 0"><div id="micBar" style="height:100%;width:0;background:var(--t);transition:width .1s"></div></div><p id="micMsg" style="font-size:18px"></p><div class="row" style="justify-content:center"><button type="button" id="micGo" class="hidden" onclick="micDone()">✅ ابدأ القراءة</button><button type="button" class="alt" onclick="micTest()">↻ إعادة الاختبار</button><button type="button" class="alt small" onclick="micDone()">تخطّي</button></div></div></div>`);
+$('modeT').insertAdjacentHTML('afterend','<button type="button" id="micT" class="alt small" onclick="micManual()">🎙️ اختبار الميكروفون</button>');
+let micStream=null,micCtx=null,micRAF=null,micOK=false;
 function micStop(){
- if(micRAF)cancelAnimationFrame(micRAF);micRAF=null;
- if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=null;
- if(micCtx){micCtx.close();micCtx=null;}
+ try{if(micRAF)cancelAnimationFrame(micRAF);}catch(e){}micRAF=null;
+ try{if(micStream)micStream.getTracks().forEach(t=>t.stop());}catch(e){}micStream=null;
+ try{if(micCtx&&micCtx.state!=='closed')micCtx.close();}catch(e){}micCtx=null;
 }
+function micManual(){micOK=false;micTest();}
 async function micTest(){
  micStop();$('micGo').classList.add('hidden');$('micBar').style.width='0';$('micMsg').textContent='';
  $('micBox').classList.remove('hidden');
  try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});}
  catch(e){$('micStep').textContent='⚠️ لم يُسمح باستخدام الميكروفون.';$('micMsg').textContent='اسمحي بالميكروفون من إعدادات المتصفح (رمز القفل بجانب الرابط)، ثم اضغطي «إعادة الاختبار».';return;}
- micCtx=new (window.AudioContext||window.webkitAudioContext)();
- const an=micCtx.createAnalyser();an.fftSize=1024;micCtx.createMediaStreamSource(micStream).connect(an);
- const buf=new Float32Array(an.fftSize);
- const rms=()=>{an.getFloatTimeDomainData(buf);let s=0;for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k];return Math.sqrt(s/buf.length);};
- let noise=0,n=0,voice=0,tm=performance.now(),ph=1;
- $('micStep').textContent='١) ابقَ صامتًا لثانيتين… نقيس ضوضاء المكان';
- const loop=()=>{
-  const v=rms();$('micBar').style.width=Math.min(100,v*400)+'%';
-  const t=performance.now()-tm;
-  if(ph==1){noise+=v;n++;if(t>2000){noise/=n;ph=2;tm=performance.now();$('micStep').textContent='٢) الآن قل بصوت عادي: «مرحبًا سنفور، أنا جاهز للقراءة»';}}
-  else{voice=Math.max(voice,v);if(t>4000){micResult(noise,voice);return;}}
-  micRAF=requestAnimationFrame(loop);
- };
- loop();
+ try{
+  micCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const an=micCtx.createAnalyser();an.fftSize=1024;micCtx.createMediaStreamSource(micStream).connect(an);
+  const buf=new Float32Array(an.fftSize);
+  const rms=()=>{an.getFloatTimeDomainData(buf);let s=0;for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k];return Math.sqrt(s/buf.length);};
+  let noise=0,n=0,voice=0,tm=performance.now(),ph=1;
+  $('micStep').textContent='١) ابقَ صامتًا لثانيتين… نقيس ضوضاء المكان';
+  const loop=()=>{
+   const v=rms();$('micBar').style.width=Math.min(100,v*400)+'%';
+   const t=performance.now()-tm;
+   if(ph==1){noise+=v;n++;if(t>2000){noise/=n;ph=2;tm=performance.now();$('micStep').textContent='٢) الآن قل بصوت عادي: «مرحبًا سنفور، أنا جاهز للقراءة»';}}
+   else{voice=Math.max(voice,v);if(t>4000){micResult(noise,voice);return;}}
+   micRAF=requestAnimationFrame(loop);
+  };
+  loop();
+ }catch(e){micResult(0,1);}
 }
 function micResult(noise,voice){
  micStop();
@@ -973,6 +976,23 @@ function micResult(noise,voice){
  $('micStep').textContent='انتهى الاختبار';$('micMsg').textContent=msg;
  $('micGo').classList.toggle('hidden',!ok);
 }
+function micDone(){
+ micStop();
+ $('micBox').classList.add('hidden');
+ micOK=true;
+ if(P&&phase=='idle'){
+  Promise.resolve(_st5()).then(()=>{if(phase=='reading')$('micT').classList.add('hidden');}).catch(e=>alert('تعذّر بدء القراءة: '+e.message));
+ }
+}
+const _st5=startReading;
+window.startReading=async function(){
+ const c=getConsent(curSid);
+ if(c&&c.v==='yes'&&!micOK){micTest();return;}
+ await _st5();
+ if(phase=='reading')$('micT').classList.add('hidden');
+};
+const _op5=openPassage;
+window.openPassage=function(id){_op5(id);$('micT').classList.remove('hidden');};
  /* ========== Compact layout ========== */
 (function(){
  const c=document.createElement('style');
