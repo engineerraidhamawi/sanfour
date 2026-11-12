@@ -1,44 +1,93 @@
 # سنفور (Sanfour): Arabic Reading-Fluency Platform
 
-An Arabic, right-to-left web/mobile app for children aged 6–12 (Grades 1–6) who have reading difficulties. The child reads a passage aloud, and the app measures **words correct per minute (WCPM)**, accuracy, Arabic-specific reading errors, possible stuttering signs and **comprehension**, then reports the results to the doctor/teacher and to parents.
+An Arabic, right-to-left web app that helps doctors, reading specialists and teachers assess and track reading fluency and comprehension for children aged 6–12 (Grades 1–6).
+
+**🔗 Live app:** https://sanfour-ten.vercel.app
 
 > Screening and progress tracking only. Not a medical or clinical diagnosis.
 
-## What's in this repo
+---
 
-| File | What it is |
+## Features
+
+### Reading session
+- 6 grades × 3 levels (دعم / ضمن الصف / تحدٍّ), with 18 built-in Arabic passages, each with 3 comprehension questions
+- Untimed mode (default; the clock counts up) or a classic 1-minute timed mode
+- Microphone recording of the reading (only with parental consent)
+- Doctor scoring: tap the last word read and each misread word
+- **WCPM** = (words read − errors) ÷ seconds × 60, plus accuracy %
+- Encouraging, honest result headlines, and a warning for readings under 15 seconds
+
+### 🤖 AI transcription assistant
+- After a reading, the recording is sent to `/api/transcribe` (a Vercel serverless function) → **Groq Whisper `whisper-large-v3`** (Arabic, word-level timestamps)
+- The transcript is aligned to the passage (Arabic-normalized edit-distance alignment) and **pre-marks**:
+  - suspected substitutions and omissions (errors)
+  - long pauses (more than 2 s before a word)
+  - possible repetitions (inserted words)
+- **The AI suggests and the doctor confirms.** Every mark can be edited before scoring.
+- Known limits: the AI can "auto-correct" misreadings and often misses repetitions and prolongations.
+
+### Comprehension
+- Questions after each passage (multiple choice / true-false), tagged by skill: حرفي، استنتاجي، مفردات، ترتيب الأحداث، الفكرة الرئيسة، نقدي
+- A per-skill breakdown, plus a fluency × comprehension interpretation
+
+### Doctor tools
+- **Add custom passages** with 4–6 skill-tagged questions
+- **Student profiles:** WCPM and comprehension charts (right-to-left), per-skill totals, session history, and a level recommendation based on the last 3 sessions at the same level
+- **Parent weekly report:** a shareable link (WhatsApp / copy) containing only a summary snapshot, viewable without login
+
+### Security & admin
+- Login screen (username + 4–6 digit PIN); the first account is the admin
+- Admin: add or remove users, change roles (admin / doctor-teacher), reset PINs
+- PIN lock on doctor pages (auto-unlocks for 10 minutes)
+- Per-student **parental consent** for audio recording (saved, shown in the profile, can be withdrawn)
+- **Backup & restore:** export and import all data as JSON
+
+---
+
+## Project structure
+
+| File | Purpose |
 |---|---|
-| `C8qBMDOA.md` | **Product blueprint (Arabic)**: the main spec. Word-counting rules, error types, stuttering markers, benchmarks, level logic, reports, doctor passage authoring, comprehension analysis, privacy. |
-| `1_6.md` | 18 original Arabic passages (Grades 1–6 × Levels 1–3) with tashkeel, word counts and questions |
-| `Ew1G1UI8.md` | Sample Grade 5 passage with 5 comprehension questions |
-| `001_sanfour-design-pack…pdf` | **All final screen designs in one PDF** |
-| `*_Sanfour_*.jpg` | Individual designs: logo, style board, student, doctor and parent screens |
+| `index.html` | The whole front-end app (HTML + CSS + JS, no build step) |
+| `passages.js` | The 18 built-in passages (`PASSAGES.push(...)`) |
+| `api/transcribe.js` | Vercel serverless function that proxies audio to Groq Whisper |
+| `C8qBMDOA.md` | Product blueprint (Arabic) |
+| `1_6.md` | Source text of the leveled passages |
+| `*design-pack*.pdf`, `*.jpg` | UI designs, logo and the Roo mascot |
+| `.nojekyll` | Disables Jekyll on GitHub Pages |
 
-## Users
-- **Student:** reads passages, answers questions and sees encouraging results from Roo, the mascot.
-- **Doctor/teacher:** adds her own passages with 4–6 tagged questions, assigns them and views reports.
-- **Parent:** sees a weekly summary and gives consent for recording.
+## Deployment
+- Hosted on **Vercel**, deployed automatically on every push to `main`.
+- Environment variable: **`GROQ_API_KEY`** (set in Vercel → Settings → Environment Variables, then redeploy). **Never commit keys.**
+- GitHub Pages also serves the front-end, but without AI and with separate data. Use the Vercel link.
 
-## Core features to build
-1. Arabic RTL interface (mirrored layout, Eastern Arabic numerals), following the design PDF.
-2. Grade/level structure: 6 grades × 3 levels, with automatic level up/down.
-3. Read-aloud recording, with a 60-second timer and microphone capture.
-4. **Speech analysis pipeline:**
-   - Arabic speech-to-text with **word-level timestamps**
-   - Alignment of the transcript against the passage text
-   - WCPM, accuracy, and errors (substitution, omission, insertion, diacritics, similar letters)
-   - Disfluency detection: repetitions, prolongations, blocks, pauses longer than 2 seconds
-5. Comprehension questions (multiple choice, true/false, ordering, short spoken answers), scored by skill.
-6. Doctor passage editor with auto-tashkeel, word count and AI-suggested questions.
-7. Reports and dashboards for the doctor and parents.
+## Data storage (current)
+All data lives in the browser's **localStorage**, per device and per domain:
 
-## Brand
-Colors: `#FFC93C` `#1FA6A0` `#FF7A59` `#2D3A4A` `#FFF8EC`. Use a rounded Arabic font (Tajawal or Cairo). The mascot is **Roo**, a kangaroo with teal glasses.
+| Key | Contents |
+|---|---|
+| `sanfour_users` | Users `{u, pin, role}` |
+| `sanfour_students` | Students `{id, name, consent}` |
+| `sanfour_h` | Session history `{sid, ts, date, title, grade, level, wcpm, acc, comp, skills}` |
+| `sanfour_custom` | Doctor-authored passages |
+| `sanfour_pin`, `sanfour_cur`, `sanfour_timed` | Session settings |
 
-## Requirements
-- Parental consent before any recording. Encrypt recordings and delete them after 90 days.
-- Comply with children's data-protection laws in each target country.
-- WCPM targets are **provisional** and must be validated by Arabic reading specialists.
+## Known limitations
+- No server database: data doesn't sync across devices, and clearing the browser deletes it (use Backup).
+- PINs are stored unencrypted on the device. This is a convenience lock, not real security.
+- The Groq free tier has rate limits.
+- WCPM targets are **provisional** and need validation by Arabic reading specialists.
+- The AI marks are suggestions; disfluency (stuttering) detection is not reliable yet.
 
-## Status
-Design and content stage. Next step: a working prototype (MVP).
+## Roadmap (next for a developer)
+1. **Real backend + auth** (e.g. Supabase/Firebase): synced data, per-doctor students, hashed credentials, encryption
+2. **Improved disfluency detection:** a specialized model for repetitions, prolongations and blocks
+3. **Error-type analysis** for Arabic: diacritics, similar letters, hamza/ة, long vowels, sun/moon لام
+4. **Specialist validation** of passages, tashkeel, questions and benchmarks
+5. **Privacy compliance** with child-data laws in each target country, a data-processing agreement with the speech provider, and a retention policy
+
+## Privacy
+- Parental consent is required before recording.
+- Audio is sent to the speech provider only when the AI button is used, and is not stored in the app after the session.
+- The parent report link contains only a summary snapshot.
