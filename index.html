@@ -662,17 +662,3 @@ window.addEventListener('load',()=>{
 <script src="passages.js"></script>
 </body>
 </html>
-File 2: create passages.js (the 18 passages)
-
-GitHub → Add file → Create new file → name it exactly passages.js
-Scroll up in this chat to my message that begins "All 18 passages are ready", copy its big code block (it starts with /* ---------- All 18 built-in passages ---------- */ and ends with );), and paste it.
-Commit changes.
-File 3: check api/transcribe.js. It should be the full Groq file, ending with:
-
-    const j = await r.json();
-    if (!r.ok) return res.status(500).json({ error: (j.error && j.error.message) || 'فشل التفريغ' });
-    res.status(200).json({ text: j.text || '', words: j.words || [] });
-  } catch (e) {
-    res.status(500).json({ error: String((e && e.message) || e) });
-  }
-};
