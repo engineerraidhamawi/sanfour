@@ -973,6 +973,46 @@ function micResult(noise,voice){
  $('micStep').textContent='انتهى الاختبار';$('micMsg').textContent=msg;
  $('micGo').classList.toggle('hidden',!ok);
 }
+ /* ========== Compact layout ========== */
+(function(){
+ const c=document.createElement('style');
+ c.textContent=`
+header{padding:6px 14px}
+header img{width:40px;height:40px;border-width:2px}
+header h1{font-size:24px}
+main{padding:0 12px 12px}
+.card{padding:14px 16px;margin:10px 0;border-radius:18px}
+h2{font-size:20px;margin:0 0 8px}
+button{font-size:17px;padding:9px 18px}
+button.small{font-size:14px;padding:5px 12px}
+.note{font-size:15px}
+input,select,textarea{font-size:17px;padding:8px 12px}
+textarea{font-size:19px;line-height:1.8}
+.stats{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat{padding:10px;border-radius:14px}
+.stat b{font-size:26px}
+.big{font-size:48px}
+.timer{font-size:30px;min-width:60px}
+.opt{font-size:19px;padding:10px 16px;margin:6px 0}
+#qtext{font-size:22px!important;margin-bottom:6px}
+.plist button{margin:5px 0;padding:9px 16px}
+.qcard{padding:10px;margin:8px 0}
+#read .card:first-child{display:flex;flex-direction:column;max-height:calc(100vh - 150px);margin-bottom:0}
+#read h2{font-size:22px;margin:0}
+#rnote{margin:4px 0}
+#ptext{overflow:auto;flex:1;min-height:120px;font-size:clamp(20px,2.6vw,30px);line-height:2.05;padding-left:6px}
+#aiOut{max-height:28vh;overflow:auto}
+#read>.row{position:sticky;bottom:0;background:var(--bg);padding:8px 0;margin:0;z-index:20}
+#logoutBtn{top:8px;bottom:auto;left:12px;right:auto}
+#lockBtn{top:8px;bottom:auto;left:110px}
+@media (max-width:600px){
+ button{font-size:15px;padding:8px 14px}
+ .timer{font-size:24px}
+ #ptext{font-size:21px}
+ #read .card:first-child{max-height:calc(100vh - 190px)}
+}`;
+ document.head.appendChild(c);
+})();
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
