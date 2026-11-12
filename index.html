@@ -1033,6 +1033,53 @@ textarea{font-size:19px;line-height:1.8}
 }`;
  document.head.appendChild(c);
 })();
+ /* ========== Reading comfort tools ========== */
+let cf=Object.assign({fs:0,sp:false,ruler:false,tint:1},JSON.parse(localStorage.getItem('sanfour_comfort')||'{}')),rLine=0;
+const TINTS=['#ffffff','#FFF8EC','#E8F4FF','#FFF6C9'],TN=['أبيض','كريمي','أزرق فاتح','أصفر فاتح'];
+(function(){const c=document.createElement('style');c.textContent='#cfBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#cfBar button{font-size:14px!important;padding:5px 12px!important}.w.dim{opacity:.15}';document.head.appendChild(c);})();
+$('rnote').insertAdjacentHTML('beforebegin',`<div id="cfBar"><span class="note" style="font-size:14px">راحة القراءة:</span><button type="button" class="alt" onclick="cfSize(-1)">A−</button><button type="button" class="alt" onclick="cfSize(1)">A+</button><button type="button" class="alt" id="cfSp" onclick="cfToggle('sp')">↔ تباعد</button><button type="button" class="alt" id="cfRu" onclick="cfToggle('ruler')">📏 مسطرة السطر</button><button type="button" class="alt" id="cfTi" onclick="cfTint()">🎨 لون الخلفية</button><span id="cfNav" class="hidden"><button type="button" class="alt" onclick="cfLine(-1)">▲ السطر السابق</button> <button type="button" class="alt" onclick="cfLine(1)">▼ السطر التالي</button></span></div>`);
+function cfSave(){localStorage.setItem('sanfour_comfort',JSON.stringify(cf));}
+function cfLines(){const ws=[...document.querySelectorAll('#ptext .w')],tops=[];ws.forEach(w=>{const t=w.offsetTop;if(!tops.some(x=>Math.abs(x-t)<6))tops.push(t);});tops.sort((a,b)=>a-b);return{ws,tops};}
+function cfRuler(scroll){
+ const {ws,tops}=cfLines();
+ if(!cf.ruler||phase=='score'||!tops.length){ws.forEach(w=>w.classList.remove('dim'));return;}
+ rLine=Math.max(0,Math.min(tops.length-1,rLine));const top=tops[rLine];
+ ws.forEach(w=>w.classList.toggle('dim',Math.abs(w.offsetTop-top)>=6));
+ if(scroll){const first=ws.find(w=>Math.abs(w.offsetTop-top)<6);if(first)first.scrollIntoView({block:'center',behavior:'smooth'});}
+}
+function cfApply(){
+ const t=$('ptext');if(!t)return;
+ const base=window.innerWidth<600?21:Math.min(30,Math.max(20,window.innerWidth*0.026));
+ t.style.fontSize=(base+cf.fs*3)+'px';
+ t.style.wordSpacing=cf.sp?'0.35em':'';t.style.lineHeight=cf.sp?'2.6':'';
+ t.style.background=TINTS[cf.tint];t.style.borderRadius='12px';t.style.padding='6px 10px';
+ $('cfSp').classList.toggle('sel',!!cf.sp);$('cfRu').classList.toggle('sel',!!cf.ruler);$('cfTi').textContent='🎨 '+TN[cf.tint];
+ $('cfNav').classList.toggle('hidden',!cf.ruler||phase=='score');
+ cfRuler(false);
+}
+function cfSize(d){cf.fs=Math.max(-2,Math.min(4,cf.fs+d));cfSave();cfApply();}
+function cfToggle(k){cf[k]=!cf[k];if(k=='ruler')rLine=0;cfSave();cfApply();cfRuler(true);}
+function cfTint(){cf.tint=(cf.tint+1)%TINTS.length;cfSave();cfApply();}
+function cfLine(d){rLine+=d;cfRuler(true);}
+const _rw6=renderWords;
+window.renderWords=function(){_rw6();cfApply();};
+const _tw6=tapWord;
+window.tapWord=function(i){
+ if(cf.ruler&&phase!='score'){
+  const {ws,tops}=cfLines(),el=ws[i];
+  if(el){rLine=tops.findIndex(t=>Math.abs(t-el.offsetTop)<6);cfRuler(false);}
+  return;
+ }
+ _tw6(i);
+};
+const _sr6=stopReading;
+window.stopReading=function(t){_sr6(t);cfApply();};
+window.addEventListener('resize',()=>cfRuler(false));
+document.addEventListener('keydown',e=>{
+ if(!cf.ruler||phase=='score'||$('read').classList.contains('hidden'))return;
+ if(e.key=='ArrowDown'){e.preventDefault();cfLine(1);}
+ if(e.key=='ArrowUp'){e.preventDefault();cfLine(-1);}
+});
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
