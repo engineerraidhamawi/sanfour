@@ -649,6 +649,65 @@ function renderParent(d){
  +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
 }
 
+ /* ========== Parent consent ========== */
+document.body.insertAdjacentHTML('beforeend',`<div id="consentBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow:auto"><div class="card" style="max-width:580px;width:100%">
+<h2>📝 موافقة ولي الأمر على التسجيل الصوتي</h2>
+<p id="cnStudent" style="font-size:20px;font-weight:700"></p>
+<div class="note" style="line-height:1.9">
+• سيُسجَّل صوت الطالب أثناء القراءة لمساعدة الدكتورة على تقييم الطلاقة.<br>
+• عند استخدام «التحليل بالذكاء الاصطناعي» فقط، يُرسل التسجيل إلى خدمة خارجية لتحويل الصوت إلى نص، وفق شروط تلك الخدمة.<br>
+• لا يُحفظ التسجيل الصوتي داخل التطبيق بعد انتهاء الجلسة، والنتائج تُحفظ على هذا الجهاز فقط.<br>
+• النتائج للمتابعة التربوية فقط، وليست تشخيصًا.<br>
+• يمكن سحب الموافقة في أي وقت من ملف الطالب.</div>
+<label>اسم ولي الأمر</label><input id="cnName" class="full">
+<label style="display:flex;gap:10px;align-items:center;font-weight:400;font-size:19px"><input type="checkbox" id="cnChk" style="width:26px;height:26px;max-width:26px;flex:none">أوافق، بصفتي ولي الأمر، على تسجيل صوت الطالب ومعالجته كما هو موضح أعلاه.</label>
+<p class="note" id="cnErr" style="color:var(--c);font-weight:700"></p>
+<div class="row"><button onclick="consentYes()">✅ موافق — ابدأ القراءة</button><button class="alt" onclick="consentNo()">بدون تسجيل صوتي</button><button class="alt small" onclick="$('consentBox').classList.add('hidden')">إلغاء</button></div>
+<p class="note" style="font-size:15px">يُنصح بالاحتفاظ بنسخة ورقية موقّعة من ولي الأمر.</p>
+</div></div>`);
+const getConsent=sid=>(getStudents().find(x=>x.id==sid)||{}).consent;
+function setConsent(sid,c){const s=getStudents(),st=s.find(x=>x.id==sid);if(st){if(c)st.consent=c;else delete st.consent;saveStudents(s);}}
+let __noRec=false;
+if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+ const _gum=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+ navigator.mediaDevices.getUserMedia=function(c){return __noRec?Promise.reject(new Error('no consent')):_gum(c);};
+}
+const _st0=startReading;
+window.startReading=async function(){
+ const c=getConsent(curSid);
+ if(!c){
+  $('cnStudent').textContent='الطالب: '+studentName(curSid);
+  $('cnName').value='';$('cnChk').checked=false;$('cnErr').textContent='';
+  $('consentBox').classList.remove('hidden');return;
+ }
+ __noRec=c.v!=='yes';
+ $('aiBtn').classList.toggle('hidden',__noRec);
+ await _st0();
+ if(__noRec)$('rnote').textContent='بدون تسجيل صوتي (لا توجد موافقة). '+(timed?'اضغطي «انتهى» إذا أنهى الطالب النص قبل الوقت.':'اضغطي «انتهى» عندما يتوقف الطالب عن القراءة.');
+};
+function consentYes(){
+ const n=$('cnName').value.trim();
+ if(!n){$('cnErr').textContent='اكتبي اسم ولي الأمر.';return;}
+ if(!$('cnChk').checked){$('cnErr').textContent='يجب تحديد مربع الموافقة.';return;}
+ setConsent(curSid,{v:'yes',name:n,date:new Date().toLocaleDateString('ar')});
+ $('consentBox').classList.add('hidden');startReading();
+}
+function consentNo(){
+ setConsent(curSid,{v:'no',date:new Date().toLocaleDateString('ar')});
+ $('consentBox').classList.add('hidden');startReading();
+}
+const _apc=addParentCard;
+window.addParentCard=function(){
+ _apc();
+ if(!profSid||$('consentCard'))return;
+ const c=getConsent(profSid);
+ const txt=c?(c.v=='yes'?`✅ موافق على التسجيل — ولي الأمر: ${esc(c.name)} (${c.date})`:`🚫 بدون تسجيل صوتي (${c.date})`):'⏳ لم تُحدَّد الموافقة بعد — ستُطلب قبل أول قراءة.';
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="consentCard"><h2>📝 موافقة التسجيل الصوتي</h2><p style="font-size:19px">${txt}</p>${c?'<button class="alt small" onclick="resetConsent()">تغيير / سحب الموافقة</button>':''}</div>`);
+};
+function resetConsent(){
+ if(!confirm('سيُطلب من ولي الأمر تحديد الموافقة من جديد قبل القراءة القادمة. متابعة؟'))return;
+ setConsent(profSid,null);openProfile(profSid);
+}
 /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
