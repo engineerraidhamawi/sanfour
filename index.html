@@ -834,6 +834,64 @@ window.addParentCard=function(){
  html+='<p class="note">هذه المؤشرات للمتابعة التربوية فقط، وليست تشخيصًا.</p></div>';
  $('prBody').insertAdjacentHTML('beforeend',html);
 };
+ /* ========== PDF student report ========== */
+function buildReport(sid,notes){
+ const st=getStudents().find(x=>x.id==sid);if(!st)return null;
+ const ss=getHist().filter(r=>r.sid==sid).reverse();if(!ss.length)return null;
+ const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+ const lg=[...ss].reverse().find(r=>r.grade),target=lg?TARGETS[lg.grade][lg.level-1]:null;
+ const wc=ss.map(r=>r.wcpm),cp=ss.map(r=>r.comp),last=ss[ss.length-1];
+ const sk={},et={},dt={};let dsess=0;
+ ss.forEach(r=>{
+  Object.entries(r.skills||{}).forEach(([k,v])=>{sk[k]=sk[k]||[0,0];sk[k][0]+=v[0];sk[k][1]+=v[1];});
+  Object.entries(r.et||{}).forEach(([k,v])=>et[k]=(et[k]||0)+v);
+  const d=r.dt||{};if(Object.keys(d).length)dsess++;Object.entries(d).forEach(([k,v])=>dt[k]=(dt[k]||0)+v);
+ });
+ const top=Object.entries(et).filter(([k])=>ETIPS[k]).sort((a,b)=>b[1]-a[1]).slice(0,2);
+ const c=typeof getConsent=='function'?getConsent(sid):null;
+ const logo=location.origin+'/001_Sanfour_Arabic_Logo_qHa2qU9s.jpg';
+ const S=(l,v)=>`<div class="st"><b>${v}</b><span>${l}</span></div>`;
+ return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير ${esc(st.name)}</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet"><style>
+@page{size:A4;margin:14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Tajawal',sans-serif;color:#2D3A4A;margin:0;font-size:14px}
+.hd{display:flex;align-items:center;gap:14px;border-bottom:4px solid #FFC93C;padding-bottom:10px;margin-bottom:14px}
+.hd img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #2D3A4A}
+.hd h1{margin:0;font-size:24px}.hd p{margin:2px 0;color:#5b6675}
+h2{font-size:17px;margin:14px 0 8px;color:#1FA6A0;border-right:5px solid #1FA6A0;padding-right:8px}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.st{background:#FFF8EC;border-radius:12px;padding:10px;text-align:center}.st b{display:block;font-size:22px}.st span{font-size:12px;color:#5b6675}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px solid #eee;padding:6px;text-align:right}th{background:#FFF8EC}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}.box{border:1px solid #eee;border-radius:12px;padding:10px;break-inside:avoid}
+.note{color:#5b6675;font-size:12px}.warn{color:#FF7A59;font-weight:700}.lines div{border-bottom:1px solid #bbb;height:26px}
+.sig{display:flex;justify-content:space-between;margin-top:24px}
+</style></head><body>
+<div class="hd"><img src="${logo}" onerror="this.style.display='none'"><div><h1>سنفور — تقرير الطالب</h1><p>تاريخ التقرير: ${new Date().toLocaleDateString('ar')} · إعداد: ${esc(meName()||'')}</p></div></div>
+<div class="box"><b style="font-size:20px">👤 ${esc(st.name)}</b>${lg?` &nbsp;·&nbsp; الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})`:''}<p class="note">موافقة التسجيل الصوتي: ${c?(c.v=='yes'?'✅ موافق — '+esc(c.name)+' ('+c.date+')':'🚫 بدون تسجيل صوتي'):'لم تُحدَّد'}</p></div>
+<h2>ملخص الأداء</h2><div class="grid">${S('عدد الجلسات',ar(ss.length))+S('آخر سرعة (كلمة/دقيقة)',ar(last.wcpm))+S('الهدف المبدئي',target!=null?ar(target):'—')+S('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+S('متوسط الفهم',ar(avg(cp))+'٪')}</div>
+<div class="two"><div class="box"><h2>تطور سرعة القراءة</h2>${chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target)}<p class="note">الأقدم على اليمين، والأحدث على اليسار. الخط المتقطع = الهدف.</p></div><div class="box"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪.</p></div></div>
+<div class="two"><div class="box"><h2>الفهم حسب المهارة</h2>${Object.keys(sk).length?`<table><tr><th>المهارة</th><th>الصحيح</th><th>النسبة</th></tr>${Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} / ${ar(v[1])}</td><td>${ar(Math.round(v[0]/v[1]*100))}٪</td></tr>`).join('')}</table>`:'<p class="note">لا توجد بيانات.</p>'}</div>
+<div class="box"><h2>أنواع الأخطاء</h2>${Object.keys(et).length?`<table><tr><th>النوع</th><th>العدد</th></tr>${etRows(et)}</table>`:'<p class="note">لا توجد أخطاء مصنّفة.</p>'}${Object.keys(dt).length?`<h2>علامات التأتأة (للرصد)</h2><table><tr><th>العلامة</th><th>العدد</th></tr>${etRows(dt)}</table><p class="note">رُصدت في ${ar(dsess)} جلسة.</p>`:''}${dsess>=3?'<p class="warn">⚠️ يُقترح استشارة أخصائي النطق واللغة.</p>':''}</div></div>
+<h2>التوصية</h2><div class="box"><p style="font-size:16px;margin:0">${recommend(ss)}</p>${top.length?'<p style="margin:8px 0 0"><b>أنشطة مقترحة:</b></p>'+top.map(([k])=>`<p style="margin:4px 0">• <b>${k}:</b> ${ETIPS[k]}</p>`).join(''):''}</div>
+<h2>آخر الجلسات</h2><table><tr><th>التاريخ</th><th>النص</th><th>المستوى</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>${ss.slice(-10).reverse().map(r=>`<tr><td>${r.date}</td><td>${esc(r.title)}</td><td>${r.grade?GN[r.grade]+' · '+ar(r.level):'—'}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')}</table>
+<h2>ملاحظات الدكتورة</h2><div class="box">${notes?`<p style="font-size:15px;white-space:pre-wrap;margin:0">${esc(notes)}</p>`:'<div class="lines"><div></div><div></div><div></div></div>'}</div>
+<div class="sig"><span>التوقيع: ____________________</span><span>التاريخ: ____________</span></div>
+<p class="note" style="margin-top:16px">هذا التقرير للمتابعة التربوية فقط، وليس تشخيصًا طبيًّا. الأهداف المبدئية لسرعة القراءة تحتاج إلى تحقق من أخصائيين.</p>
+<script>window.onload=()=>setTimeout(()=>window.print(),800);<\/script>
+</body></html>`;
+}
+function printReport(){
+ const w=window.open('','_blank');
+ if(!w){alert('اسمحي بالنوافذ المنبثقة لهذا الموقع ثم حاولي مجددًا.');return;}
+ const h=buildReport(profSid,$('repNotes')?$('repNotes').value.trim():'');
+ if(!h){w.close();alert('لا توجد جلسات لهذا الطالب بعد.');return;}
+ w.document.open();w.document.write(h);w.document.close();
+}
+const _apc3=addParentCard;
+window.addParentCard=function(){
+ _apc3();
+ if(!profSid||$('pdfCard')||!getHist().some(r=>r.sid==profSid))return;
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="pdfCard"><h2>🖨️ تقرير PDF للطالب</h2><p class="note">تقرير جاهز للطباعة أو الحفظ بصيغة PDF: الملخص، الرسوم البيانية، المهارات، أنواع الأخطاء، والتوصية.</p><textarea id="repNotes" rows="3" placeholder="ملاحظات الدكتورة (اختياري) — تظهر في التقرير"></textarea><div class="row" style="margin-top:8px"><button onclick="printReport()">🖨️ إنشاء التقرير</button></div></div>`);
+};
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
