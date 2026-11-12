@@ -935,6 +935,44 @@ window.showSummary=function(){
   c.insertAdjacentHTML('afterend','<div class="card" id="heardNote"><p style="color:var(--c);font-weight:700;margin:0">🔊 استمع الطالب للقراءة النموذجية قبل هذه الجلسة، لذلك قد تكون النتيجة أعلى من مستواه الفعلي.</p></div>');
  }
  };
+ /* ========== Microphone check ========== */
+document.body.insertAdjacentHTML('beforeend',`<div id="micBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:160;padding:16px"><div class="card" style="max-width:480px;width:100%;text-align:center"><h2>🎙️ اختبار الميكروفون</h2><p id="micStep" style="font-size:20px"></p><div style="background:#eee;border-radius:999px;height:22px;overflow:hidden;margin:14px 0"><div id="micBar" style="height:100%;width:0;background:var(--t);transition:width .1s"></div></div><p id="micMsg" style="font-size:18px"></p><div class="row" style="justify-content:center"><button id="micGo" class="hidden" onclick="micDone()">✅ ابدأ القراءة</button><button class="alt" onclick="micTest()">↻ إعادة الاختبار</button><button class="alt small" onclick="micDone()">تخطّي</button></div></div></div>`);
+$('modeT').insertAdjacentHTML('afterend','<button id="micT" class="alt small" onclick="sessionStorage.removeItem(\'sanfour_micok\');micTest()">🎙️ اختبار الميكروفون</button>');
+let micStream=null,micCtx=null,micRAF=null;
+function micStop(){
+ if(micRAF)cancelAnimationFrame(micRAF);micRAF=null;
+ if(micStream)micStream.getTracks().forEach(t=>t.stop());micStream=null;
+ if(micCtx){micCtx.close();micCtx=null;}
+}
+async function micTest(){
+ micStop();$('micGo').classList.add('hidden');$('micBar').style.width='0';$('micMsg').textContent='';
+ $('micBox').classList.remove('hidden');
+ try{micStream=await navigator.mediaDevices.getUserMedia({audio:true});}
+ catch(e){$('micStep').textContent='⚠️ لم يُسمح باستخدام الميكروفون.';$('micMsg').textContent='اسمحي بالميكروفون من إعدادات المتصفح (رمز القفل بجانب الرابط)، ثم اضغطي «إعادة الاختبار».';return;}
+ micCtx=new (window.AudioContext||window.webkitAudioContext)();
+ const an=micCtx.createAnalyser();an.fftSize=1024;micCtx.createMediaStreamSource(micStream).connect(an);
+ const buf=new Float32Array(an.fftSize);
+ const rms=()=>{an.getFloatTimeDomainData(buf);let s=0;for(let k=0;k<buf.length;k++)s+=buf[k]*buf[k];return Math.sqrt(s/buf.length);};
+ let noise=0,n=0,voice=0,tm=performance.now(),ph=1;
+ $('micStep').textContent='١) ابقَ صامتًا لثانيتين… نقيس ضوضاء المكان';
+ const loop=()=>{
+  const v=rms();$('micBar').style.width=Math.min(100,v*400)+'%';
+  const t=performance.now()-tm;
+  if(ph==1){noise+=v;n++;if(t>2000){noise/=n;ph=2;tm=performance.now();$('micStep').textContent='٢) الآن قل بصوت عادي: «مرحبًا سنفور، أنا جاهز للقراءة»';}}
+  else{voice=Math.max(voice,v);if(t>4000){micResult(noise,voice);return;}}
+  micRAF=requestAnimationFrame(loop);
+ };
+ loop();
+}
+function micResult(noise,voice){
+ micStop();
+ const ratio=voice/(noise||0.001);let msg,ok=true;
+ if(voice<0.05){msg='🔇 الصوت ضعيف جدًّا. قرّبي الجهاز من الطالب (حوالي ٣٠ سم) وتأكدي أن الميكروفون غير مكتوم.';ok=false;}
+ else if(noise>0.02||ratio<4)msg='🔊 المكان صاخب قليلًا. أبعدي مصادر الضجيج (مروحة، تلفاز، أحاديث) لتحسين التحليل الآلي.';
+ else msg='✅ الميكروفون يعمل جيدًا والمكان هادئ.';
+ $('micStep').textContent='انتهى الاختبار';$('micMsg').textContent=msg;
+ $('micGo').classList.toggle('hidden',!ok);
+}
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
