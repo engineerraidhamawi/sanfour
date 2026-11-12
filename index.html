@@ -906,7 +906,7 @@ function stopModel(){
 function toggleModel(){
  if(mAudio){stopModel();return;}
  if(!P||!/^b\d-\d$/.test(P.id)){alert('لا يوجد تسجيل نموذجي لهذا النص.');return;}
- mAudio=new Audio('audio/'+P.id+'.mp3');
+ mAudio=new Audio(P.id+'.mp3');
  const wts=words.map(w=>w.replace(/[\u064B-\u0652\u0670]/g,'').length+2),tot=wts.reduce((a,b)=>a+b,0),cum=[];
  let s=0;wts.forEach(x=>{s+=x;cum.push(s/tot);});
  mAudio.onerror=()=>{stopModel();alert('لم يتم العثور على التسجيل النموذجي لهذا النص.');};
