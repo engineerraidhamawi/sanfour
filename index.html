@@ -773,6 +773,67 @@ async function cloudPull(auto){
 }
 async function cloudSignOut(){try{await capi({action:'logout',token:cToken});}catch(e){}cloudForget();}
 if(cToken)cloudPull(true);
+ /* ========== Error types & disfluency ========== */
+const ETYPES=['حركة (تشكيل)','حرف متشابه','همزة / تاء مربوطة','حرف مدّ','لام شمسية / قمرية','استبدال كلمة','حذف كلمة','قلب حروف','سابقة / لاحقة','غير مصنّف'];
+const DTYPES=['تكرار','إطالة صوت','انحباس / توقف طويل'];
+const ETIPS={'حركة (تشكيل)':'قراءة كلمات مشكولة ببطء ثم بسرعة، مع التركيز على الحركة قبل النطق.','حرف متشابه':'بطاقات للحروف المتشابهة (ب/ت/ث، ح/ج/خ، د/ذ) مع التركيز على عدد النقاط ومكانها.','همزة / تاء مربوطة':'تمييز أشكال الهمزة، ونطق التاء المربوطة وصلًا (تاء) ووقفًا (هاء).','حرف مدّ':'التدريب على الفرق بين الحركة القصيرة والمدّ (كَتَبَ / كاتِب).','لام شمسية / قمرية':'تصنيف كلمات إلى شمسية وقمرية وقراءتها بصوت مرتفع.','استبدال كلمة':'القراءة المتكررة للنص نفسه مع تتبّع الكلمات بالإصبع.','حذف كلمة':'تتبّع السطر بالإصبع أو بمسطرة لتقليل تخطّي الكلمات.','قلب حروف':'تهجئة الكلمة حرفًا حرفًا قبل قراءتها كاملة.','سابقة / لاحقة':'تقسيم الكلمة إلى سابقة + أصل + لاحقة قبل القراءة.'};
+let etype={},dtype={},etIdx=-1;
+(function(){const c=document.createElement('style');c.textContent='.w.dis{border-bottom:3px dashed #8a6fd1}.etb{font-size:16px!important;padding:8px 14px!important}';document.head.appendChild(c);})();
+document.body.insertAdjacentHTML('beforeend',`<div id="etBox" class="hidden" style="position:fixed;left:0;right:0;bottom:0;z-index:120;background:#fff;box-shadow:0 -8px 30px rgba(45,58,74,.25);border-radius:24px 24px 0 0;padding:18px;max-height:70vh;overflow:auto"><div class="row" style="justify-content:space-between"><h2 id="etWord" style="margin:0"></h2><button class="alt small" onclick="$('etBox').classList.add('hidden')">إغلاق</button></div><p class="note" style="margin:8px 0 6px">نوع الخطأ (يُحسب خطأ):</p><div class="row" id="etErr"></div><p class="note" style="margin:12px 0 6px">علامة تأتأة (للرصد فقط، لا تُحسب خطأ):</p><div class="row" id="etDis"></div><div class="row" style="margin-top:14px"><button class="alt small" onclick="clearMark()">✖ إزالة كل العلامات عن الكلمة</button></div></div>`);
+function openEt(i){
+ etIdx=i;$('etWord').textContent='«'+words[i]+'»';
+ $('etErr').innerHTML=ETYPES.map((t,k)=>`<button class="etb ${errs.has(i)&&etype[i]==t?'sel':'alt'}" onclick="setEt(${k})">${t}</button>`).join('');
+ $('etDis').innerHTML=DTYPES.map((t,k)=>`<button class="etb ${dtype[i]==t?'sel':'alt'}" onclick="setDt(${k})">${t}</button>`).join('');
+ $('etBox').classList.remove('hidden');
+}
+function setEt(k){errs.add(etIdx);etype[etIdx]=ETYPES[k];$('etBox').classList.add('hidden');renderWords();}
+function setDt(k){dtype[etIdx]=DTYPES[k];$('etBox').classList.add('hidden');renderWords();}
+function clearMark(){errs.delete(etIdx);delete etype[etIdx];delete dtype[etIdx];$('etBox').classList.add('hidden');renderWords();}
+const _tw=tapWord;
+window.tapWord=function(i){if(phase!='score')return;if(mode=='last'){_tw(i);return;}openEt(i);};
+const _rw2=renderWords;
+window.renderWords=function(){_rw2();document.querySelectorAll('#ptext .w').forEach((el,i)=>{el.classList.toggle('dis',!!dtype[i]);el.title=[errs.has(i)?(etype[i]||'خطأ غير مصنّف'):'',dtype[i]||''].filter(Boolean).join(' · ');});};
+const _op3=openPassage;
+window.openPassage=function(id){etype={};dtype={};_op3(id);};
+const _ai2=applyAI;
+window.applyAI=function(hw,t){_ai2(hw,t);etype={};dtype={};aiPause.forEach(i=>dtype[i]='انحباس / توقف طويل');aiRep.forEach(i=>dtype[i]='تكرار');renderWords();};
+const _cr2=calcResult;
+window.calcResult=function(){
+ if(lastIdx<0){_cr2();return;}
+ _cr2();
+ const et={},dt={};
+ [...errs].filter(i=>i<=lastIdx).forEach(i=>{const t=etype[i]||'غير مصنّف';et[t]=(et[t]||0)+1;});
+ Object.entries(dtype).forEach(([i,t])=>{if(+i<=lastIdx)dt[t]=(dt[t]||0)+1;});
+ R.et=et;R.dt=dt;
+};
+const etRows=o=>Object.entries(o||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v)}</td></tr>`).join('');
+const _ss=showSummary;
+window.showSummary=function(){
+ _ss();
+ const h=getHist();if(h[0]){h[0].et=R.et||{};h[0].dt=R.dt||{};saveHist(h);}
+ let card=$('etCard');
+ if(!card){$('skills').closest('.card').insertAdjacentHTML('afterend','<div class="card" id="etCard"></div>');card=$('etCard');}
+ card.innerHTML='<h2>أنواع الأخطاء وعلامات التأتأة</h2>'
+  +(Object.keys(R.et||{}).length?`<table><tr><th>نوع الخطأ</th><th>العدد</th></tr>${etRows(R.et)}</table>`:'<p class="note">لا توجد أخطاء مسجّلة.</p>')
+  +(Object.keys(R.dt||{}).length?`<table style="margin-top:12px"><tr><th>علامة تأتأة (للرصد فقط)</th><th>العدد</th></tr>${etRows(R.dt)}</table>`:'');
+};
+const _apc2=addParentCard;
+window.addParentCard=function(){
+ _apc2();
+ if(!profSid||$('etProf'))return;
+ const ss=getHist().filter(r=>r.sid==profSid);
+ const et={},dt={};let dsess=0;
+ ss.forEach(r=>{Object.entries(r.et||{}).forEach(([k,v])=>et[k]=(et[k]||0)+v);const d=r.dt||{};if(Object.keys(d).length)dsess++;Object.entries(d).forEach(([k,v])=>dt[k]=(dt[k]||0)+v);});
+ if(!Object.keys(et).length&&!Object.keys(dt).length)return;
+ const top=Object.entries(et).filter(([k])=>ETIPS[k]).sort((a,b)=>b[1]-a[1]).slice(0,2);
+ let html='<div class="card" id="etProf"><h2>🔤 أنواع الأخطاء (كل الجلسات)</h2>';
+ html+=Object.keys(et).length?`<table><tr><th>نوع الخطأ</th><th>العدد</th></tr>${etRows(et)}</table>`:'<p class="note">لا توجد أخطاء مصنّفة بعد.</p>';
+ if(top.length)html+='<h3 style="margin:16px 0 6px">💡 أنشطة مقترحة</h3>'+top.map(([k])=>`<p style="font-size:19px;margin:6px 0">• <b>${k}:</b> ${ETIPS[k]}</p>`).join('');
+ if(Object.keys(dt).length)html+=`<h3 style="margin:16px 0 6px">علامات التأتأة (للرصد فقط)</h3><table><tr><th>العلامة</th><th>العدد</th></tr>${etRows(dt)}</table><p class="note">رُصدت في ${ar(dsess)} جلسة.</p>`;
+ if(dsess>=3)html+='<p style="font-size:19px;color:var(--c);font-weight:700">⚠️ رُصدت علامات تأتأة في ٣ جلسات أو أكثر؛ يُقترح استشارة أخصائي النطق واللغة.</p>';
+ html+='<p class="note">هذه المؤشرات للمتابعة التربوية فقط، وليست تشخيصًا.</p></div>';
+ $('prBody').insertAdjacentHTML('beforeend',html);
+};
  /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
