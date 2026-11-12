@@ -39,6 +39,8 @@ label{display:block;font-weight:700;margin:14px 0 6px}
 .w.err{background:var(--c);color:#fff}
 .w.last{outline:3px solid var(--t)}
 .w.after{opacity:.35}
+.w.aip{border-right:5px solid var(--y)}
+.w.air{text-decoration:underline wavy var(--t);text-decoration-thickness:3px}
 .timer{font-size:44px;font-weight:800;color:var(--c);min-width:90px;text-align:center}
 .big{font-size:64px;font-weight:800;margin:0}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
@@ -50,12 +52,23 @@ label{display:block;font-weight:700;margin:14px 0 6px}
 .note{font-size:18px;color:#5b6675}
 table{width:100%;border-collapse:collapse;font-size:18px}
 td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
+#pinBox{position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:99}
+#pinBox .card{max-width:380px;width:90%;text-align:center}
+#pinIn{max-width:none;text-align:center;font-size:32px;letter-spacing:12px;margin:12px 0}
+#lockBtn{position:fixed;bottom:16px;left:16px;z-index:50}
+#loginGate{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+#loginGate .card{max-width:420px;width:100%;text-align:center}
+#loginGate img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--s)}
+#loginGate input{max-width:none;margin:8px 0;text-align:center}
+#lgPin,#lgPin2{letter-spacing:10px;font-size:28px}
+#logoutBtn{position:fixed;bottom:16px;right:16px;z-index:50}
 </style>
 </head>
 <body>
 <header><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1>سنفو<span>ر</span></h1></header>
 <main>
 <section id="home">
+ <div class="row" id="userBar" style="justify-content:space-between;margin-top:8px"></div>
  <div class="card"><h2>الطالب</h2>
   <div class="row">
    <select id="sSel" onchange="curSid=this.value;localStorage.setItem('sanfour_cur',curSid)"></select>
@@ -116,27 +129,34 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 
 <section id="read" class="hidden">
  <div class="card">
-  <div class="row" style="justify-content:space-between"><h2 id="ptitle"></h2><div class="timer" id="timer">٦٠</div></div>
+  <div class="row" style="justify-content:space-between"><h2 id="ptitle"></h2><div class="timer" id="timer">٠</div></div>
   <p class="note" id="rnote"></p>
   <div class="passage" id="ptext"></div>
+  <div id="aiOut" class="note"></div>
  </div>
  <div class="row">
   <button id="startBtn" onclick="startReading()">ابدأ القراءة 🎤</button>
+  <button id="modeT" class="alt small" onclick="toggleTimed()"></button>
   <button id="stopBtn" class="coral hidden" onclick="stopReading()">انتهى</button>
  </div>
  <div class="row hidden" id="sbtns">
+  <button id="aiBtn" class="coral" onclick="aiAnalyze()">🤖 تحليل بالذكاء الاصطناعي</button>
   <button id="modeBtn" class="alt" onclick="toggleMode()">تحديد آخر كلمة قُرئت</button>
   <button class="yellow" onclick="calcResult()">احسب النتيجة</button>
  </div>
 </section>
 <section id="result" class="hidden">
- <div class="card" style="text-align:center"><h2>قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p></div>
+ <div class="card" style="text-align:center"><h2 id="resTitle">قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p></div>
  <div class="card"><div class="stats" id="rstats"></div><audio id="audio" controls class="hidden" style="width:100%;margin-top:14px"></audio></div>
  <div class="row"><button onclick="startQuestions()">إلى أسئلة الفهم</button></div>
 </section>
 <section id="quiz" class="hidden">
  <div class="card"><p class="note" id="qnum"></p><span class="tag" id="qskill"></span><h2 id="qtext" style="font-size:28px"></h2><div id="qopts"></div></div>
  <div class="row"><button id="nextQ" onclick="nextQuestion()" disabled>التالي</button></div>
+</section>
+<section id="done" class="hidden">
+ <div class="card" style="text-align:center"><p style="font-size:70px;margin:0">🎉</p><h2 style="font-size:34px">أحسنت! أنهيت الأسئلة</h2><p class="note">شكرًا على قراءتك الرائعة 🌟</p></div>
+ <div class="row"><button class="yellow" onclick="needPin(()=>show('summary'))">🔒 تقرير الدكتورة</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div>
 </section>
 <section id="summary" class="hidden">
  <div class="card"><h2>تقرير الجلسة (للدكتورة)</h2><div class="stats" id="sstats"></div></div>
@@ -148,40 +168,30 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  <div class="card"><h2>سجل النتائج</h2><div id="htable"></div></div>
  <div class="row"><button onclick="goHome()">رجوع</button><button class="alt" onclick="clearHistory()">مسح السجل</button></div>
 </section>
+<section id="admin" class="hidden">
+ <div class="card"><h2>💾 النسخ الاحتياطي</h2><p class="note">احفظي كل البيانات (المستخدمون، الطلاب، النتائج، النصوص) في ملف، واستعيديها على جهاز أو رابط آخر.</p>
+  <div class="row"><button onclick="exportData()">⬇️ تنزيل نسخة احتياطية</button><button class="alt" onclick="$('impFile').click()">⬆️ استعادة من ملف</button><input type="file" id="impFile" accept=".json,application/json" class="hidden" onchange="importData(this.files[0])"></div></div>
+ <div class="card"><h2>⚙️ إدارة المستخدمين</h2><div id="admList"></div></div>
+ <div class="card"><h2>إضافة مستخدم</h2>
+  <input id="admU" class="full" placeholder="اسم المستخدم">
+  <input id="admPin" class="full" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز (٤–٦ أرقام)">
+  <select id="admRole"><option value="doctor">دكتورة / معلمة</option><option value="admin">مدير</option></select>
+  <p class="note" id="admErr" style="color:var(--c);font-weight:700"></p>
+  <button onclick="addUser()">+ إضافة</button>
+ </div>
+ <div class="row"><button class="alt" onclick="goHome()">رجوع</button></div>
+</section>
+<section id="parent" class="hidden"><div id="parentBody"></div></section>
 </main>
+
+<div id="pinBox" class="hidden"><div class="card"><h2 id="pinTitle"></h2><p class="note" id="pinNote"></p><input id="pinIn" type="password" inputmode="numeric" maxlength="6" autocomplete="off"><p class="note" id="pinErr" style="color:var(--c);font-weight:700"></p><div class="row" style="justify-content:center"><button onclick="pinOK()">دخول</button><button class="alt" onclick="pinCancel()">إلغاء</button></div><p><a href="#" onclick="pinForgot();return false" class="note">نسيت الرمز؟</a></p></div></div>
+<button id="lockBtn" class="alt small hidden" onclick="lockNow()">🔒 قفل</button>
+<div id="loginGate"><div class="card"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1 style="font-size:40px;margin:10px 0">سنفو<span style="color:var(--y)">ر</span></h1><h2 id="lgTitle"></h2><input id="lgUser" placeholder="اسم المستخدم" autocomplete="username"><input id="lgPin" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز" autocomplete="current-password"><input id="lgPin2" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="أعيدي إدخال الرمز"><p class="note" id="lgErr" style="color:var(--c);font-weight:700"></p><button id="lgBtn" style="width:100%" onclick="loginOK()"></button><p class="note" id="lgHint"></p><p><a href="#" onclick="gateForgot();return false" class="note">نسيت الرمز؟</a></p></div></div>
+<button id="logoutBtn" class="alt small hidden" onclick="logout()">🚪 خروج</button>
+
 <script>
-const PASSAGES=[
-{id:'g1l2',grade:1,level:2,title:'قِطَّتِي لُولُو',
-text:"عِنْدِي قِطَّةٌ صَغِيرَةٌ اسْمُهَا لُولُو. لَوْنُ لُولُو أَبْيَضُ. تُحِبُّ لُولُو الْحَلِيبَ. تَلْعَبُ لُولُو بِالْكُرَةِ فِي الْبَيْتِ. فِي اللَّيْلِ تَنَامُ لُولُو قُرْبَ سَرِيرِي.",
-questions:[
-{q:'ما لَوْنُ لُولُو؟',skill:'حرفي',options:['أسود','أبيض','بُنّي'],answer:1},
-{q:'ماذا تُحِبُّ لُولُو؟',skill:'حرفي',options:['الحليب','الماء','العصير'],answer:0},
-{q:'أين تنام لُولُو في الليل؟',skill:'حرفي',options:['في الحديقة','في المطبخ','قرب السرير'],answer:2},
-{q:'النص يتحدث عن قطة صغيرة وما تحبه.',skill:'الفكرة الرئيسة',options:['صح','خطأ'],answer:0}]},
-{id:'g2l2',grade:2,level:2,title:'الطَّائِرَةُ الضَّائِعَةُ',
-text:"رَكَضَتْ مَرْيَمُ إِلَى الْحَدِيقَةِ وَمَعَهَا طَائِرَةٌ حَمْرَاءُ. كَانَتِ الرِّيحُ قَوِيَّةً، فَطَارَتِ الطَّائِرَةُ عَالِيَةً فِي السَّمَاءِ. فَجْأَةً انْقَطَعَ الْخَيْطُ، وَطَارَتِ الطَّائِرَةُ بَعِيدًا. حَزِنَتْ مَرْيَمُ كَثِيرًا. بَحَثَتْ عَنْهَا مَعَ أَخِيهَا سَامِي، فَوَجَدَاهَا فَوْقَ شَجَرَةٍ كَبِيرَةٍ. صَعِدَ الْحَارِسُ عَلَى سُلَّمٍ وَأَنْزَلَهَا. شَكَرَتْهُ مَرْيَمُ وَقَالَتْ: سَأَرْبِطُ الْخَيْطَ جَيِّدًا فِي الْمَرَّةِ الْقَادِمَةِ.",
-questions:[
-{q:'لماذا طارت الطائرة عالية؟',skill:'حرفي',options:['لأن مريم رمتها','لأن الريح كانت قوية','لأن الطائرة جديدة'],answer:1},
-{q:'أين وُجِدت الطائرة؟',skill:'حرفي',options:['فوق شجرة كبيرة','في النهر','في البيت'],answer:0},
-{q:'ما معنى كلمة «انقطع» في النص؟',skill:'مفردات',options:['طال كثيرًا','تلوّن','انفصل وتمزّق'],answer:2},
-{q:'ماذا تعلّمت مريم من القصة؟',skill:'استنتاجي',options:['ألا تلعب في الحديقة','أن تربط الخيط جيدًا','أن تشتري طائرة جديدة'],answer:1},
-{q:'ما الفكرة الرئيسة للقصة؟',skill:'الفكرة الرئيسة',options:['طائرة ضاعت ثم وُجدت بمساعدة الآخرين','الريح خطيرة دائمًا','الحارس يحب الأشجار'],answer:0}]},
-{id:'g5l1',grade:5,level:1,title:'النَّحلةُ الصَّغيرةُ والعَسَل',
-text:"تعيشُ النحلاتُ في بيتٍ اسمُه الخَلِيَّة. في الخليةِ ملكةٌ واحدةٌ، وعددٌ كبيرٌ من النحلاتِ العامِلات. تضعُ الملكةُ البَيضَ، وتعملُ العاملاتُ طَوالَ اليوم. في الصباحِ، تطيرُ النحلةُ إلى الحديقة. تقفُ على زهرةٍ، وتمتصُّ منها سائلًا حُلوًا اسمُه الرَّحِيق. تحفظُ النحلةُ الرحيقَ في مَعِدةٍ خاصّة، ثم تعودُ إلى الخلية. هناك تُعطي الرحيقَ لنحلاتٍ أخرى. تضعُ النحلاتُ الرحيقَ في بيوتٍ صغيرةٍ من الشَّمع، لها ستةُ جوانب. ثم تُحرِّكُ النحلاتُ أجنحتَها بسرعةٍ لتجفيفِ الماءِ من الرحيق. وبعدَ أيامٍ، يصبحُ الرحيقُ عسلًا كثيفًا. تُغلِقُ النحلاتُ البيوتَ بغطاءٍ من الشمع، ليبقى العسلُ طعامًا لها في الشتاء. وحين تنتقلُ النحلةُ من زهرةٍ إلى زهرة، تحملُ معها حُبوبَ اللِّقاح. وهذا يساعدُ الأزهارَ على صُنعِ البُذورِ والثِّمار. قالت مريمُ لأخيها سامي: «النحلةُ صغيرة، لكنَّ عملَها كبير!» فابتسمَ سامي وقال: «سأشكرُها كلَّما أكلتُ العسل.»",
-questions:[
-{q:'ما اسم السائل الحلو الذي تمتصه النحلة من الزهرة؟',skill:'حرفي',options:['الشمع','الرحيق','اللقاح'],answer:1},
-{q:'ماذا تفعل النحلة بعد أن تمتص الرحيق؟',skill:'ترتيب الأحداث',options:['تعود إلى الخلية','تنام على الزهرة','تصنع الشمع فورًا'],answer:0},
-{q:'ما معنى كلمة «الخليّة» في النص؟',skill:'مفردات',options:['زهرة كبيرة','طعام النحل','بيت النحل'],answer:2},
-{q:'لماذا تُغلق النحلات البيوت بغطاء من الشمع؟',skill:'استنتاجي',options:['لتنام فيها','ليبقى العسل طعامًا لها في الشتاء','لتمنع الضوء'],answer:1},
-{q:'النص يتحدث عن عمل النحلات في صنع العسل ومساعدة الأزهار.',skill:'الفكرة الرئيسة',options:['صح','خطأ'],answer:0}]},
-{id:'g6l3',grade:6,level:3,title:'رحلة الغوص على اللؤلؤ',
-text:"في الماضي، قبل اكتشاف النفط، كان البحر مصدر رزق لكثير من أهل الخليج العربي. وفي كل صيف، كانت السفن الخشبية تنطلق نحو مغاصات اللؤلؤ، وتبقى في عرض البحر قرابة أربعة أشهر، في موسم يُعرف باسم «الغَوص الكبير». على ظهر السفينة يعمل فريق متعاون، يقوده النُّوخذة، أي ربان السفينة. أما الغواص فكان يضع على أنفه ملقطا صغيرا يسمى الفِطام ليمنع دخول الماء، ثم يربط في قدمه حجرا ثقيلا يساعده على النزول بسرعة إلى القاع. وكان يحمل سلة من الحبال تسمى الدَّيين، يجمع فيها المحار بيديه وهو يحبس أنفاسه نحو دقيقة أو أكثر. وفوق السطح يقف السَّيب ممسكا بالحبل، فإذا شده الغواص سحبه بقوة حتى يصعد ليتنفس. كان الغواص يكرر النزول عشرات المرات في اليوم، من شروق الشمس حتى غروبها. وفي صباح اليوم التالي يجلس البحارة معا لفلق المحار، وتتعلق عيونهم بكل صدفة، لعل في داخلها لؤلؤة بيضاء لامعة. وكانت أجمل اللآلئ تباع في الأسواق البعيدة بأثمان غالية. وكان الأهل ينتظرون عودة السفن على الشاطئ بالأغاني والفرح، في يوم يسمونه «القَفّال». اليوم، يتذكر أهل الخليج هذه المهنة الشاقة بفخر، فهي تحكي قصة الصبر والشجاعة والتعاون.",
-questions:[
-{q:'لماذا كان الغواص يربط حجرا ثقيلا في قدمه؟',skill:'حرفي',options:['ليحمل فيه المحار','لينزل بسرعة إلى القاع','ليمنع دخول الماء إلى أنفه'],answer:1},
-{q:'لماذا كانت حياة الغواص تعتمد على السيب؟',skill:'استنتاجي',options:['لأنه يسحبه إلى السطح ليتنفس','لأنه يقود السفينة','لأنه يبيع اللؤلؤ'],answer:0},
-{q:'ما معنى كلمة «النُّوخذة» في النص؟',skill:'مفردات',options:['سلة لجمع المحار','يوم عودة السفن','ربان السفينة'],answer:2},
-{q:'ما الفكرة الرئيسة للنص؟',skill:'الفكرة الرئيسة',options:['اللؤلؤ يباع في الأسواق البعيدة','الغوص على اللؤلؤ مهنة شاقة قامت على الصبر والشجاعة والتعاون','السفن الخشبية كانت كبيرة وجميلة'],answer:1}]}
-];
+/* ========== Core data & helpers ========== */
+const PASSAGES=[];
 const TARGETS={1:[20,30,40],2:[40,50,60],3:[55,65,75],4:[65,75,85],5:[75,85,95],6:[80,90,100]};
 const GN=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
 const LN=['','دعم','ضمن الصف','تحدٍّ'];
@@ -196,13 +206,18 @@ const getStudents=()=>JSON.parse(localStorage.getItem('sanfour_students')||'[]')
 const saveStudents=s=>localStorage.setItem('sanfour_students',JSON.stringify(s));
 const getHist=()=>JSON.parse(localStorage.getItem('sanfour_h')||'[]');
 const saveHist=h=>localStorage.setItem('sanfour_h',JSON.stringify(h));
+const getUsers=()=>JSON.parse(localStorage.getItem('sanfour_users')||'[]');
+const saveUsers=u=>localStorage.setItem('sanfour_users',JSON.stringify(u));
 const studentName=id=>(getStudents().find(x=>x.id==id)||{}).name||'—';
-let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=0,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={},dq=[];
+let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=-1,mode='err',phase='idle',t0=0,elapsed=0,tick=null,rec=null,chunks=[],audioURL=null,qi=0,answers=[],R={},dq=[];
 let curSid=localStorage.getItem('sanfour_cur')||'',profSid='';
+let timed=localStorage.getItem('sanfour_timed')==='1';
+let lastBlob=null,aiPause=new Set(),aiRep=new Set();
+const SECTIONS=['home','students','profile','doctor','read','result','quiz','done','summary','history','admin','parent'];
+function show(id){SECTIONS.forEach(s=>$(s).classList.toggle('hidden',s!==id));if(id=='profile')addParentCard();window.scrollTo(0,0)}
+function goHome(){renderHome();show('home');}
 
-function show(id){['home','students','profile','doctor','read','result','quiz','summary','history'].forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo(0,0)}
-
-/* ---------- Students ---------- */
+/* ========== Students & profile ========== */
 function migrate(){
  const s=getStudents(),h=getHist();let ch=false;
  h.forEach(r=>{if(!r.sid){let st=s.find(x=>x.name==r.name);if(!st){st={id:'s'+Date.now()+Math.random().toString(36).slice(2,6),name:r.name||'—'};s.push(st);}r.sid=st.id;ch=true;}});
@@ -219,11 +234,11 @@ function addStudent(fromList){
  curSid=st.id;localStorage.setItem('sanfour_cur',curSid);
  fromList?showStudents():renderHome();
 }
-function showStudents(){
+function showStudents(){needPin(()=>{
  const s=getStudents(),h=getHist();
  $('stList').innerHTML=s.length?s.map(x=>{const n=h.filter(r=>r.sid==x.id).length;return `<div class="row" style="justify-content:space-between;border-bottom:1px solid #eee;padding:10px 0"><span style="font-size:20px">👤 ${esc(x.name)} — ${ar(n)} جلسة</span><button class="small" onclick="openProfile('${x.id}')">📈 الملف</button></div>`;}).join(''):'<p class="note">لا يوجد طلاب بعد.</p>';
  show('students');
-}
+});}
 function deleteStudent(){
  if(!profSid||!confirm('حذف الطالب وكل جلساته؟'))return;
  saveStudents(getStudents().filter(x=>x.id!=profSid));saveHist(getHist().filter(r=>r.sid!=profSid));
@@ -252,6 +267,7 @@ function recommend(ss){
 }
 function openProfile(sid){
  if(!sid){alert('اختر طالبًا أولًا');return;}
+ needPin(()=>{
  const st=getStudents().find(x=>x.id==sid);if(!st)return;
  profSid=sid;$('prName').textContent='👤 '+st.name;
  const ss=getHist().filter(r=>r.sid==sid).reverse();
@@ -267,26 +283,27 @@ function openProfile(sid){
  html+=`<div class="card"><h2>التوصية</h2><p style="font-size:22px">${recommend(ss)}</p><p class="note">مؤشر للمتابعة فقط، وليس تشخيصًا. القرار النهائي للدكتورة.</p></div>`;
  html+=`<div class="card"><h2>كل الجلسات</h2><table><tr><th>#</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>${ss.map((r,i)=>`<tr><td>${ar(i+1)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).reverse().join('')}</table></div>`;
  $('prBody').innerHTML=html;show('profile');
+ });
 }
 
-/* ---------- Home ---------- */
+/* ========== Home ========== */
 function renderHome(){
- renderStudentSel();
+ renderStudentSel();updateUserBar();
  $('grades').innerHTML=[1,2,3,4,5,6].map(g=>`<button class="alt ${g==grade?'sel':''}" onclick="grade=${g};renderHome()">${GN[g]}</button>`).join('');
  $('levels').innerHTML=[1,2,3].map(l=>`<button class="alt ${l==level?'sel':''}" onclick="level=${l};renderHome()">${ar(l)} · ${LN[l]}</button>`).join('');
  const list=allPassages().filter(p=>p.grade==grade&&p.level==level);
  $('plist').innerHTML=list.length?list.map(p=>`<button onclick="openPassage('${p.id}')">${p.custom?'✍️':'📖'} ${esc(p.title)}</button>`).join(''):'<p class="note">لا توجد نصوص لهذا الصف والمستوى بعد. جرّب صفًّا أو مستوى آخر، أو أضيفي نصًّا جديدًا.</p>';
 }
 
-/* ---------- Doctor: add passages ---------- */
+/* ========== Doctor: add passages ========== */
 const newQ=()=>({q:'',skill:'حرفي',type:'mc',options:['','',''],answer:0});
-function openDoctor(){
+function openDoctor(){needPin(()=>{
  $('dTitle').value='';$('dText').value='';$('dErr').textContent='';
  dq=[newQ(),newQ(),newQ(),newQ()];
  $('dGrade').innerHTML=[1,2,3,4,5,6].map(g=>`<option value="${g}" ${g==grade?'selected':''}>الصف ${GN[g]}</option>`).join('');
  $('dLevel').innerHTML=[1,2,3].map(l=>`<option value="${l}" ${l==level?'selected':''}>المستوى ${ar(l)} · ${LN[l]}</option>`).join('');
  countWords();renderQs();renderMine();show('doctor');
-}
+});}
 function countWords(){const t=$('dText').value.trim();$('dCount').textContent=ar(t?t.split(/\s+/).length:0)+' كلمة';}
 function renderQs(){
  $('qCount').textContent=ar(dq.length)+' من ٦';
@@ -329,56 +346,74 @@ function renderMine(){
 }
 function delPassage(id){if(confirm('حذف هذا النص؟')){localStorage.setItem('sanfour_custom',JSON.stringify(getCustom().filter(p=>p.id!=id)));renderMine();}}
 
-/* ---------- Reading session ---------- */
+/* ========== Reading session ========== */
+function modeLabel(){$('modeT').textContent=timed?'⏱ دقيقة واحدة (اضغطي للتغيير)':'♾️ بدون حد زمني (اضغطي للتغيير)';$('timer').textContent=timed?ar(60):ar(0);}
+function toggleTimed(){timed=!timed;localStorage.setItem('sanfour_timed',timed?'1':'0');modeLabel();}
 function openPassage(id){
  if(!curSid){alert('أضف طالبًا أولًا من زر «+ طالب جديد».');return;}
  P=allPassages().find(p=>p.id==id);
- words=P.text.trim().split(/\s+/);errs=new Set();lastIdx=words.length-1;mode='err';phase='idle';elapsed=0;audioURL=null;
- $('ptitle').textContent=P.title;$('timer').textContent=ar(60);
+ words=P.text.trim().split(/\s+/);errs=new Set();lastIdx=-1;mode='err';phase='idle';elapsed=0;audioURL=null;
+ lastBlob=null;aiPause=new Set();aiRep=new Set();$('aiOut').innerHTML='';
+ $('ptitle').textContent=P.title;
  $('rnote').textContent='الطالب: '+studentName(curSid)+' — اضغط «ابدأ القراءة» واطلب منه أن يقرأ بصوت مرتفع.';
- $('startBtn').classList.remove('hidden');$('stopBtn').classList.add('hidden');$('sbtns').classList.add('hidden');$('modeBtn').classList.remove('sel');
- renderWords();show('read');
+ $('startBtn').classList.remove('hidden');$('modeT').classList.remove('hidden');$('stopBtn').classList.add('hidden');$('sbtns').classList.add('hidden');$('modeBtn').classList.remove('sel');
+ modeLabel();renderWords();show('read');
 }
 function renderWords(){
- $('ptext').innerHTML=words.map((w,i)=>`<span class="w ${errs.has(i)?'err':''} ${phase=='score'&&i==lastIdx?'last':''} ${phase=='score'&&i>lastIdx?'after':''}" onclick="tapWord(${i})">${esc(w)}</span>`).join(' ');
+ $('ptext').innerHTML=words.map((w,i)=>`<span class="w ${errs.has(i)?'err':''} ${phase=='score'&&i==lastIdx?'last':''} ${phase=='score'&&i>lastIdx?'after':''} ${aiPause.has(i)?'aip':''} ${aiRep.has(i)?'air':''}" onclick="tapWord(${i})">${esc(w)}</span>`).join(' ');
 }
 function tapWord(i){
  if(phase!='score')return;
- if(mode=='last'){lastIdx=i;mode='err';$('modeBtn').classList.remove('sel');}
+ if(mode=='last'){lastIdx=i;mode='err';$('modeBtn').classList.remove('sel');
+  $('rnote').textContent='اضغطي على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغطي «احسب النتيجة».';}
  else{errs.has(i)?errs.delete(i):errs.add(i);}
  renderWords();
 }
 function toggleMode(){mode=mode=='last'?'err':'last';$('modeBtn').classList.toggle('sel',mode=='last');}
 async function startReading(){
- phase='reading';chunks=[];rec=null;
+ phase='reading';chunks=[];rec=null;lastBlob=null;
  try{
   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
   rec=new MediaRecorder(stream);
   rec.ondataavailable=e=>chunks.push(e.data);
-  rec.onstop=()=>{audioURL=URL.createObjectURL(new Blob(chunks,{type:rec.mimeType}));stream.getTracks().forEach(t=>t.stop());};
+  rec.onstop=()=>{lastBlob=new Blob(chunks,{type:rec.mimeType});audioURL=URL.createObjectURL(lastBlob);stream.getTracks().forEach(t=>t.stop());};
   rec.start();
  }catch(e){rec=null;}
  t0=Date.now();
- $('startBtn').classList.add('hidden');$('stopBtn').classList.remove('hidden');
- $('rnote').textContent=rec?'🔴 جارٍ التسجيل… اضغط «انتهى» إذا أنهى الطالب النص قبل الوقت.':'التسجيل الصوتي غير متاح، لكن المؤقت يعمل.';
- tick=setInterval(()=>{const s=60-Math.floor((Date.now()-t0)/1000);$('timer').textContent=ar(Math.max(s,0));if(s<=0)stopReading(true);},250);
+ $('startBtn').classList.add('hidden');$('modeT').classList.add('hidden');$('stopBtn').classList.remove('hidden');
+ const pre=rec?'🔴 جارٍ التسجيل… ':'التسجيل الصوتي غير متاح، لكن المؤقت يعمل. ';
+ $('rnote').textContent=pre+(timed?'اضغطي «انتهى» إذا أنهى الطالب النص قبل الوقت.':'لا يوجد حد زمني. اضغطي «انتهى» عندما يتوقف الطالب عن القراءة.');
+ tick=setInterval(()=>{
+  const s=Math.floor((Date.now()-t0)/1000);
+  if(timed){$('timer').textContent=ar(Math.max(60-s,0));if(s>=60)stopReading(true);}
+  else{$('timer').textContent=ar(s);if(s>=600)stopReading(true);}
+ },250);
 }
 function stopReading(timeUp){
  if(phase!='reading')return;
  clearInterval(tick);
- elapsed=timeUp===true?60:Math.max(1,(Date.now()-t0)/1000);
+ elapsed=timeUp===true?(timed?60:600):Math.max(1,(Date.now()-t0)/1000);
  if(rec&&rec.state!='inactive')rec.stop();
  phase='score';
  $('stopBtn').classList.add('hidden');$('sbtns').classList.remove('hidden');
- $('rnote').textContent=timeUp===true?'انتهى الوقت! اضغط على كل كلمة أخطأ فيها الطالب، ثم اضغط «تحديد آخر كلمة قُرئت» واختر آخر كلمة وصل إليها.':'اضغط على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغط «احسب النتيجة».';
+ if(timeUp!==true&&confirm('هل قرأ الطالب النص كاملًا حتى آخر كلمة؟')){
+  lastIdx=words.length-1;mode='err';$('modeBtn').classList.remove('sel');
+  $('rnote').textContent='اضغطي على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغطي «احسب النتيجة».';
+ }else{
+  lastIdx=-1;mode='last';$('modeBtn').classList.add('sel');
+  $('rnote').textContent='① اضغطي على آخر كلمة وصل إليها الطالب. ② ثم اضغطي على كل كلمة أخطأ فيها (تصبح برتقالية). ③ ثم اضغطي «احسب النتيجة».';
+ }
  renderWords();
 }
 function calcResult(){
+ if(lastIdx<0){alert('اضغطي أولًا على آخر كلمة قرأها الطالب.');return;}
  const attempted=lastIdx+1, e=[...errs].filter(i=>i<=lastIdx).length, correct=attempted-e;
  R={wcpm:Math.round(correct/elapsed*60),acc:Math.round(correct/attempted*100),correct,errors:e,secs:Math.round(elapsed)};
- const target=TARGETS[P.grade][P.level-1];
+ const target=TARGETS[P.grade][P.level-1], ok=R.wcpm>=target&&R.acc>=95;
+ $('resTitle').textContent=R.acc<90?'أحسنت المحاولة! واصل التدريب 🌱':ok?'قراءة رائعة! 🌟':'عمل جيد! استمر 💪';
  $('wcpm').textContent=ar(R.wcpm);
- $('rstats').innerHTML=stat('الدقة',ar(R.acc)+'٪')+stat('كلمات صحيحة',ar(correct))+stat('أخطاء',ar(e))+stat('الزمن',ar(R.secs)+' ث')+stat('الهدف المبدئي',ar(target));
+ $('rstats').innerHTML=stat('الدقة',ar(R.acc)+'٪')+stat('كلمات صحيحة',ar(correct))+stat('أخطاء',ar(e))+stat('الزمن',ar(R.secs)+' ث')+stat('الهدف المبدئي',ar(target))
+  +(R.secs<15?'<p class="note" style="grid-column:1/-1;color:var(--c);font-weight:700">⚠️ القراءة كانت أقل من ١٥ ثانية، لذلك النتيجة تقديرية وغير دقيقة.</p>':'');
  if(audioURL){$('audio').src=audioURL;$('audio').classList.remove('hidden')}else{$('audio').classList.add('hidden')}
  show('result');
 }
@@ -409,266 +444,24 @@ function showSummary(){
  const h=getHist();
  h.unshift({sid:curSid,name:studentName(curSid),ts:Date.now(),date:new Date().toLocaleDateString('ar'),title:P.title,grade:P.grade,level:P.level,wcpm:R.wcpm,acc:R.acc,comp,skills:sk});
  saveHist(h);
- show('summary');
+ show('done');
 }
-function showHistory(){
+function showHistory(){needPin(()=>{
  const h=getHist();
  $('htable').innerHTML=h.length?'<table><tr><th>الطالب</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>'+h.map(r=>`<tr><td>${esc(studentName(r.sid)||r.name)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')+'</table>':'<p class="note">لا توجد نتائج بعد.</p>';
  show('history');
-}
+});}
 function clearHistory(){if(confirm('مسح كل النتائج؟')){localStorage.removeItem('sanfour_h');showHistory();}}
-function goHome(){renderHome();show('home');}
-/* ---------- Doctor PIN lock ---------- */
-(function(){
- const css=document.createElement('style');
- css.textContent='#pinBox{position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:99}#pinBox .card{max-width:380px;width:90%;text-align:center}#pinIn{max-width:none;text-align:center;font-size:32px;letter-spacing:12px;margin:12px 0}#lockBtn{position:fixed;bottom:16px;left:16px;z-index:50}';
- document.head.appendChild(css);
- document.body.insertAdjacentHTML('beforeend',`<div id="pinBox" class="hidden"><div class="card"><h2 id="pinTitle"></h2><p class="note" id="pinNote"></p><input id="pinIn" type="password" inputmode="numeric" maxlength="6" autocomplete="off"><p class="note" id="pinErr" style="color:var(--c);font-weight:700"></p><div class="row" style="justify-content:center"><button onclick="pinOK()">دخول</button><button class="alt" onclick="pinCancel()">إلغاء</button></div><p><a href="#" onclick="pinForgot();return false" class="note">نسيت الرمز؟</a></p></div></div><button id="lockBtn" class="alt small hidden" onclick="lockNow()">🔒 قفل</button>`);
- document.querySelector('main').insertAdjacentHTML('beforeend',`<section id="done" class="hidden"><div class="card" style="text-align:center"><p style="font-size:70px;margin:0">🎉</p><h2 style="font-size:34px">أحسنت! أنهيت الأسئلة</h2><p class="note">شكرًا على قراءتك الرائعة 🌟</p></div><div class="row"><button class="yellow" onclick="needPin(()=>show('summary'))">🔒 تقرير الدكتورة</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div></section>`);
-})();
-let pinNext=null,pinMode='enter',pinFirst='';
-const PIN_MIN=10;
-function unlocked(){return Date.now()<+(sessionStorage.getItem('sanfour_unlock')||0)}
-function setUnlocked(){sessionStorage.setItem('sanfour_unlock',Date.now()+PIN_MIN*60000);$('lockBtn').classList.remove('hidden')}
-function lockNow(){sessionStorage.removeItem('sanfour_unlock');$('lockBtn').classList.add('hidden');goHome();}
-function needPin(fn){
- if(unlocked()){setUnlocked();fn();return;}
- pinNext=fn;$('pinIn').value='';$('pinErr').textContent='';
- if(!localStorage.getItem('sanfour_pin')){pinMode='new1';$('pinTitle').textContent='🔐 إنشاء رمز الدكتورة';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام لحماية صفحات الدكتورة.';}
- else{pinMode='enter';$('pinTitle').textContent='🔒 صفحة الدكتورة';$('pinNote').textContent='أدخلي الرمز للمتابعة.';}
- $('pinBox').classList.remove('hidden');setTimeout(()=>$('pinIn').focus(),50);
-}
-function pinOK(){
- const v=$('pinIn').value.trim();
- if(!/^\d{4,6}$/.test(v)){$('pinErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
- if(pinMode=='new1'){pinFirst=v;pinMode='new2';$('pinIn').value='';$('pinNote').textContent='أعيدي إدخال الرمز للتأكيد.';$('pinErr').textContent='';return;}
- if(pinMode=='new2'){if(v!==pinFirst){pinMode='new1';$('pinIn').value='';$('pinErr').textContent='الرمزان غير متطابقين، حاولي مجددًا.';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام.';return;}localStorage.setItem('sanfour_pin',v);}
- else if(v!==localStorage.getItem('sanfour_pin')){$('pinErr').textContent='الرمز غير صحيح.';$('pinIn').value='';return;}
- $('pinBox').classList.add('hidden');setUnlocked();const f=pinNext;pinNext=null;if(f)f();
-}
-function pinCancel(){$('pinBox').classList.add('hidden');pinNext=null;}
-function pinForgot(){if(confirm('إعادة تعيين الرمز تمسح كل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){['sanfour_pin','sanfour_h','sanfour_students','sanfour_custom','sanfour_cur'].forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
-document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('pinBox').classList.contains('hidden'))pinOK();});
-['openDoctor','showStudents','showHistory','openProfile'].forEach(n=>{const f=window[n];window[n]=function(...a){needPin(()=>f(...a));};});
-const _show=show;window.show=function(id){$('done').classList.toggle('hidden',id!=='done');_show(id);};
-const _showSummary=showSummary;window.showSummary=function(){_showSummary();show('done');};
-/* ---------- Login gate ---------- */
-(function(){
- const css=document.createElement('style');
- css.textContent='#loginGate{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}#loginGate .card{max-width:420px;width:100%;text-align:center}#loginGate img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--s)}#loginGate input{max-width:none;margin:8px 0;text-align:center}#lgPin,#lgPin2{letter-spacing:10px;font-size:28px}#logoutBtn{position:fixed;bottom:16px;right:16px;z-index:50}';
- document.head.appendChild(css);
- document.body.insertAdjacentHTML('beforeend',`<div id="loginGate"><div class="card"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1 style="font-size:40px;margin:10px 0">سنفو<span style="color:var(--y)">ر</span></h1><h2 id="lgTitle"></h2><input id="lgUser" placeholder="اسم المستخدم" autocomplete="username"><input id="lgPin" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز" autocomplete="current-password"><input id="lgPin2" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="أعيدي إدخال الرمز"><p class="note" id="lgErr" style="color:var(--c);font-weight:700"></p><button id="lgBtn" style="width:100%" onclick="loginOK()"></button><p class="note" id="lgHint"></p><p><a href="#" onclick="gateForgot();return false" class="note">نسيت الرمز؟</a></p></div></div><button id="logoutBtn" class="alt small hidden" onclick="logout()">🚪 خروج</button>`);
-})();
-const getUsers=()=>JSON.parse(localStorage.getItem('sanfour_users')||'[]');
-function gateMode(){
- const first=!getUsers().length;
- $('lgTitle').textContent=first?'إنشاء حساب الدكتورة':'تسجيل الدخول';
- $('lgBtn').textContent=first?'إنشاء الحساب':'دخول';
- $('lgPin2').classList.toggle('hidden',!first);
- $('lgHint').textContent=first?'اختاري اسم مستخدم ورمزًا من ٤ إلى ٦ أرقام.':'';
-}
-function loginOK(){
- const u=$('lgUser').value.trim(),p=$('lgPin').value.trim(),users=getUsers();
- $('lgErr').textContent='';
- if(!u){$('lgErr').textContent='اكتبي اسم المستخدم.';return;}
- if(!/^\d{4,6}$/.test(p)){$('lgErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
- let user;
- if(!users.length){
-  if(p!==$('lgPin2').value.trim()){$('lgErr').textContent='الرمزان غير متطابقين.';return;}
-  user={u,pin:p};localStorage.setItem('sanfour_users',JSON.stringify([user]));
- }else{
-  user=users.find(x=>x.u==u&&x.pin==p);
-  if(!user){$('lgErr').textContent='اسم المستخدم أو الرمز غير صحيح.';$('lgPin').value='';return;}
- }
- localStorage.setItem('sanfour_pin',user.pin);
- sessionStorage.setItem('sanfour_user',user.u);
- enterApp();
-}
-function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classList.remove('hidden');goHome();}
-function logout(){sessionStorage.clear();['lgUser','lgPin','lgPin2'].forEach(i=>$(i).value='');gateMode();$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');$('loginGate').classList.remove('hidden');}
-function gateForgot(){if(confirm('إعادة التعيين تمسح الحساب وكل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
-document.addEventListener('keydown',e=>{if(e.key=='Enter'&&!$('loginGate').classList.contains('hidden'))loginOK();});
- /* ---------- Parent weekly report ---------- */
-document.querySelector('main').insertAdjacentHTML('beforeend','<section id="parent" class="hidden"><div id="parentBody"></div></section>');
-const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
-function parentData(sid){
- const st=getStudents().find(x=>x.id==sid)||{name:'—'}, now=Date.now(), wk=7*864e5;
- const all=getHist().filter(r=>r.sid==sid).reverse();
- const week=all.filter(r=>r.ts&&now-r.ts<=wk), use=week.length?week:all.slice(-5);
- return {n:st.name.split(' ')[0],f:new Date(now-wk).toLocaleDateString('ar'),t:new Date(now).toLocaleDateString('ar'),s:use.length,w:use.map(r=>r.wcpm),c:use.map(r=>r.comp),wk:week.length>0};
-}
-function parentLink(sid){return location.origin+location.pathname+'#parent='+b64e(parentData(sid));}
-function shareParent(){const url=parentLink(profSid);window.open('https://wa.me/?text='+encodeURIComponent('تقرير القراءة الأسبوعي من سنفور 🌟\n'+url),'_blank');}
-function copyParent(){const url=parentLink(profSid);if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',url));else prompt('انسخي الرابط:',url);}
-function addParentCard(){
- if(!profSid||$('parentCard'))return;
- $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="parentCard"><h2>👪 تقرير ولي الأمر الأسبوعي</h2><p class="note">رابط بسيط يرى فيه ولي الأمر ملخص الأسبوع فقط، دون تفاصيل الأخطاء.</p><div class="row"><button onclick="window.open(parentLink(profSid),'_blank')">عرض التقرير</button><button class="yellow" onclick="shareParent()">مشاركة عبر واتساب</button><button class="alt" onclick="copyParent()">نسخ الرابط</button></div></div>`);
-}
-function renderParent(d){
- const last=d.w.length?d.w[d.w.length-1]:0, first=d.w[0]||0, avgC=d.c.length?Math.round(d.c.reduce((a,b)=>a+b,0)/d.c.length):0;
- const stars='⭐'.repeat(Math.min(5,Math.max(1,d.s)));
- const trend=d.w.length<2?'نحتاج جلسات أكثر لرؤية التطور.':last>first?'سرعة القراءة تتحسن هذا الأسبوع 📈':last==first?'سرعة القراءة ثابتة، والتدريب اليومي يصنع الفرق.':'كان أسبوعًا صعبًا قليلًا، والتشجيع في البيت يساعد كثيرًا 💛';
- $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${d.f} إلى ${d.t}`:'آخر الجلسات'}</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
- +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('كلمة في الدقيقة (آخر جلسة)',ar(last))+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div><div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
- +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
-}
-const _show2=show;window.show=function(id){_show2(id);if(id=='profile')addParentCard();};
-window.addEventListener('DOMContentLoaded',()=>{
- if(!location.hash.startsWith('#parent='))return;
- let d;try{d=b64d(location.hash.slice(8));}catch(e){return;}
- $('loginGate').classList.add('hidden');$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');
- document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
- renderParent(d);$('parent').classList.remove('hidden');
-});
- /* ---------- Admin & user management ---------- */
-document.querySelector('main').insertAdjacentHTML('beforeend',`<section id="admin" class="hidden">
- <div class="card"><h2>⚙️ إدارة المستخدمين</h2><div id="admList"></div></div>
- <div class="card"><h2>إضافة مستخدم</h2>
-  <input id="admU" class="full" placeholder="اسم المستخدم">
-  <input id="admPin" class="full" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز (٤–٦ أرقام)">
-  <select id="admRole"><option value="doctor">دكتورة / معلمة</option><option value="admin">مدير</option></select>
-  <p class="note" id="admErr" style="color:var(--c);font-weight:700"></p>
-  <button onclick="addUser()">+ إضافة</button>
- </div>
- <div class="row"><button class="alt" onclick="goHome()">رجوع</button></div>
-</section>`);
-$('home').insertAdjacentHTML('afterbegin','<div class="row" id="userBar" style="justify-content:space-between;margin-top:8px"></div>');
-const saveUsers=u=>localStorage.setItem('sanfour_users',JSON.stringify(u));
-const meName=()=>sessionStorage.getItem('sanfour_user');
-const RN={admin:'مدير',doctor:'دكتورة / معلمة'};
-function fixRoles(){const u=getUsers();if(u.length&&!u.some(x=>x.role=='admin')){u.forEach((x,i)=>x.role=i==0?'admin':(x.role||'doctor'));saveUsers(u);}}
-const curRole=()=>(getUsers().find(x=>x.u==meName())||{}).role;
-function updateUserBar(){
- fixRoles();
- $('userBar').innerHTML=`<span style="font-size:19px">👤 ${esc(meName()||'')} · ${RN[curRole()]||''}</span>`+(curRole()=='admin'?'<button class="alt small" onclick="openAdmin()">⚙️ إدارة المستخدمين</button>':'');
-}
-function openAdmin(){if(curRole()!='admin'){alert('هذه الصفحة للمدير فقط.');return;}needPin(()=>{renderAdmin();show('admin');});}
-function renderAdmin(){
- const users=getUsers(),me=meName();
- $('admErr').textContent='';
- $('admList').innerHTML='<table><tr><th>المستخدم</th><th>الدور</th><th></th></tr>'+users.map((x,i)=>`<tr><td>${esc(x.u)}${x.u==me?' (أنتِ)':''}</td><td><select onchange="setRole(${i},this.value)" ${x.u==me?'disabled':''}><option value="doctor" ${x.role!='admin'?'selected':''}>${RN.doctor}</option><option value="admin" ${x.role=='admin'?'selected':''}>${RN.admin}</option></select></td><td><div class="row"><button class="alt small" onclick="resetPin(${i})">تغيير الرمز</button>${x.u!=me?`<button class="alt small" onclick="delUser(${i})">حذف</button>`:''}</div></td></tr>`).join('')+'</table>';
-}
-function addUser(){
- const u=$('admU').value.trim(),p=$('admPin').value.trim(),r=$('admRole').value,users=getUsers();
- if(!u){$('admErr').textContent='اكتبي اسم المستخدم.';return;}
- if(users.some(x=>x.u==u)){$('admErr').textContent='اسم المستخدم موجود مسبقًا.';return;}
- if(!/^\d{4,6}$/.test(p)){$('admErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
- users.push({u,pin:p,role:r});saveUsers(users);$('admU').value='';$('admPin').value='';renderAdmin();alert('تمت إضافة المستخدم ✅');
-}
-function setRole(i,r){
- const users=getUsers();
- if(r!='admin'&&users.filter(x=>x.role=='admin').length<=1&&users[i].role=='admin'){alert('يجب أن يبقى مدير واحد على الأقل.');renderAdmin();return;}
- users[i].role=r;saveUsers(users);renderAdmin();
-}
-function resetPin(i){
- const p=(prompt('الرمز الجديد (٤–٦ أرقام):')||'').trim();if(!p)return;
- if(!/^\d{4,6}$/.test(p)){alert('الرمز من ٤ إلى ٦ أرقام.');return;}
- const users=getUsers();users[i].pin=p;saveUsers(users);
- if(users[i].u==meName())localStorage.setItem('sanfour_pin',p);
- alert('تم تغيير الرمز ✅');
-}
-function delUser(i){
- const users=getUsers();
- if(users[i].role=='admin'&&users.filter(x=>x.role=='admin').length<=1){alert('لا يمكن حذف المدير الوحيد.');return;}
- if(!confirm('حذف المستخدم «'+users[i].u+'»؟'))return;
- users.splice(i,1);saveUsers(users);renderAdmin();
-}
-const _show3=show;window.show=function(id){$('admin').classList.toggle('hidden',id!=='admin');_show3(id);};
-const _enter=enterApp;window.enterApp=function(){_enter();updateUserBar();};
-/* ---------- All 18 built-in passages ---------- */
-PASSAGES.push(
-{id:'b1-1',grade:1,level:1,title:"قِطَّةُ سَارَةَ",text:"عِنْدَ سَارَةَ قِطَّةٌ صَغِيرَةٌ جِدًّا. اسْمُهَا لُولُو. لَوْنُهَا أَبْيَضُ. تُحِبُّ لُولُو الْحَلِيبَ. تَلْعَبُ لُولُو بِالْكُرَةِ. تَنَامُ لُولُو عَلَى السَّرِيرِ. تَقُولُ سَارَةُ: أُحِبُّكِ يَا لُولُو. تَفْرَحُ لُولُو وَتَقْفِزُ. سَارَةُ وَلُولُو صَدِيقَتَانِ.",questions:[{q:"مَا اسْمُ قِطَّةِ سَارَةَ؟",skill:"حرفي",options:["لُولُو","مِشْمِشُ","سُكَّرُ"],answer:0},{q:"مَاذَا تُحِبُّ لُولُو أَنْ تَشْرَبَ؟",skill:"حرفي",options:["الْمَاءَ","الْعَصِيرَ","الْحَلِيبَ"],answer:2},{q:"مَا الْفِكْرَةُ الرَّئِيسَةُ لِلنَّصِّ؟",skill:"الفكرة الرئيسة",options:["سَارَةُ تَذْهَبُ إِلَى السُّوقِ","سَارَةُ وَقِطَّتُهَا لُولُو صَدِيقَتَانِ","لُولُو تَخَافُ مِنَ الْكُرَةِ"],answer:1}]},
-{id:'b1-2',grade:1,level:2,title:"أَحْمَدُ فِي الْمَدْرَسَةِ",text:"ذَهَبَ أَحْمَدُ إِلَى الْمَدْرَسَةِ مَعَ أَبِيهِ. فِي الصَّفِّ مُعَلِّمَةٌ لَطِيفَةٌ. قَالَتِ الْمُعَلِّمَةُ: صَبَاحُ الْخَيْرِ يَا أَطْفَالُ. قَرَأَ أَحْمَدُ قِصَّةً قَصِيرَةً. رَسَمَ شَجَرَةً خَضْرَاءَ وَشَمْسًا صَفْرَاءَ. فِي الِاسْتِرَاحَةِ أَكَلَ تُفَّاحَةً حَمْرَاءَ. لَعِبَ مَعَ صَدِيقِهِ عُمَرَ. عَادَ أَحْمَدُ إِلَى الْبَيْتِ سَعِيدًا.",questions:[{q:"مَعَ مَنْ ذَهَبَ أَحْمَدُ إِلَى الْمَدْرَسَةِ؟",skill:"حرفي",options:["مَعَ أُمِّهِ","مَعَ أَبِيهِ","مَعَ جَدِّهِ"],answer:1},{q:"مَاذَا رَسَمَ أَحْمَدُ؟",skill:"حرفي",options:["شَجَرَةً وَشَمْسًا","بَيْتًا وَقِطَّةً","بَحْرًا وَسَفِينَةً"],answer:0},{q:"مَا مَعْنَى كَلِمَةِ «لَطِيفَةٌ» فِي النَّصِّ؟",skill:"مفردات",options:["غَاضِبَةٌ","طَوِيلَةٌ","رَقِيقَةٌ طَيِّبَةٌ"],answer:2}]},
-{id:'b1-3',grade:1,level:3,title:"مَرْيَمُ فِي السُّوقِ",text:"ذَهَبَتْ مَرْيَمُ مَعَ أُمِّهَا إِلَى السُّوقِ. فِي السُّوقِ أَصْوَاتٌ كَثِيرَةٌ وَأَلْوَانٌ جَمِيلَةٌ. رَأَتْ مَرْيَمُ الْبُرْتُقَالَ وَالْمَوْزَ وَالْعِنَبَ. اشْتَرَتِ الْأُمُّ خُبْزًا سَاخِنًا وَجُبْنًا أَبْيَضَ. رَأَتْ مَرْيَمُ رَجُلًا كَبِيرًا يَحْمِلُ كِيسًا ثَقِيلًا. قَالَتْ: هَلْ أُسَاعِدُكَ يَا عَمُّ؟ ابْتَسَمَ الرَّجُلُ وَقَالَ: شُكْرًا يَا ابْنَتِي. شَعَرَتْ مَرْيَمُ بِالْفَرَحِ، وَعَادَتْ مَعَ أُمِّهَا إِلَى الْبَيْتِ.",questions:[{q:"مَاذَا اشْتَرَتِ الْأُمُّ مِنَ السُّوقِ؟",skill:"حرفي",options:["لَحْمًا وَأَرُزًّا","خُبْزًا وَجُبْنًا","حَلْوَى وَعَصِيرًا"],answer:1},{q:"كَيْفَ سَاعَدَتْ مَرْيَمُ الرَّجُلَ؟",skill:"حرفي",options:["عَرَضَتْ أَنْ تُسَاعِدَهُ","أَعْطَتْهُ نُقُودًا","ضَحِكَتْ عَلَيْهِ"],answer:0},{q:"بِمَاذَا شَعَرَتْ مَرْيَمُ بَعْدَ أَنْ سَاعَدَتِ الرَّجُلَ؟",skill:"استنتاجي",options:["بِالْحُزْنِ","بِالْخَوْفِ","بِالْفَرَحِ"],answer:2}]},
-{id:'b2-1',grade:2,level:1,title:"سُلَحْفَاةُ يُوسُفَ",text:"عِنْدَ يُوسُفَ سُلَحْفَاةٌ صَغِيرَةٌ اسْمُهَا زُمُرُّدَةُ. ظَهْرُهَا قَوِيٌّ وَلَوْنُهُ أَخْضَرُ. تَمْشِي زُمُرُّدَةُ بِبُطْءٍ فِي الْحَدِيقَةِ. تُحِبُّ أَكْلَ الْخَسِّ وَالْخِيَارِ. فِي الصَّبَاحِ يَضَعُ يُوسُفُ لَهَا الطَّعَامَ وَالْمَاءَ. كُلَّ يَوْمٍ يُرَاقِبُهَا يُوسُفُ وَهِيَ تَأْكُلُ، وَيَتَعَلَّمُ مِنْهَا الصَّبْرَ. وَفِي يَوْمٍ مِنَ الْأَيَّامِ اخْتَفَتْ زُمُرُّدَةُ. بَحَثَ يُوسُفُ تَحْتَ الشَّجَرَةِ وَخَلْفَ الْبَابِ. ثُمَّ وَجَدَهَا نَائِمَةً بَيْنَ الْأَزْهَارِ. ضَحِكَ يُوسُفُ وَقَالَ: أَنْتِ بَطِيئَةٌ، لَكِنَّكِ تُحْسِنِينَ الِاخْتِبَاءَ! حَمَلَهَا بِلُطْفٍ وَأَعَادَهَا إِلَى مَكَانِهَا. وَمُنْذُ ذَلِكَ الْيَوْمِ صَنَعَ لَهَا بَيْتًا صَغِيرًا مِنَ الْخَشَبِ.",questions:[{q:"أَيْنَ وَجَدَ يُوسُفُ زُمُرُّدَةَ؟",skill:"حرفي",options:["تَحْتَ الشَّجَرَةِ","نَائِمَةً بَيْنَ الْأَزْهَارِ","خَلْفَ الْبَابِ"],answer:1},{q:"مَاذَا صَنَعَ يُوسُفُ لِسُلَحْفَاتِهِ فِي النِّهَايَةِ؟",skill:"حرفي",options:["بَيْتًا مِنَ الْخَشَبِ","حَوْضًا مِنَ الْمَاءِ","صُنْدُوقًا مِنَ الْوَرَقِ"],answer:0},{q:"مَا مَعْنَى كَلِمَةِ «بِبُطْءٍ» فِي النَّصِّ؟",skill:"مفردات",options:["بِسُرْعَةٍ","بِغَيْرِ عَجَلَةٍ","بِقُوَّةٍ"],answer:1}]},
-{id:'b2-2',grade:2,level:2,title:"يَوْمٌ عَلَى الشَّاطِئِ",text:"فِي يَوْمِ الْجُمُعَةِ ذَهَبَتْ عَائِلَةُ لَيْلَى إِلَى شَاطِئِ الْبَحْرِ. كَانَتِ الشَّمْسُ دَافِئَةً وَالْمَاءُ أَزْرَقَ صَافِيًا. بَنَتْ لَيْلَى وَأَخُوهَا خَالِدٌ قَلْعَةً كَبِيرَةً مِنَ الرَّمْلِ. زَيَّنَا الْقَلْعَةَ بِالْأَصْدَافِ الْمُلَوَّنَةِ، وَصَنَعَا لَهَا بَابًا وَنَوَافِذَ صَغِيرَةً، وَوَضَعَا عَلَى قِمَّتِهَا رِيشَةَ طَائِرٍ بَيْضَاءَ. ثُمَّ جَاءَتْ مَوْجَةٌ قَوِيَّةٌ فَهَدَمَتْ جُزْءًا مِنْهَا. حَزِنَ خَالِدٌ وَكَادَ يَبْكِي. قَالَتْ لَيْلَى: لَا تَحْزَنْ، سَنَبْنِيهَا مَعًا مِنْ جَدِيدٍ، وَنَجْعَلُهَا أَبْعَدَ عَنِ الْمَاءِ. عَمِلَ الْأَخَوَانِ بِنَشَاطٍ حَتَّى صَارَتِ الْقَلْعَةُ أَجْمَلَ مِنْ قَبْلُ. الْتَقَطَ الْأَبُ لَهُمَا صُورَةً بِجَانِبِهَا. وَعِنْدَ الْغُرُوبِ جَلَسَتِ الْعَائِلَةُ تَأْكُلُ الْبِطِّيخَ الْبَارِدَ وَتُشَاهِدُ السُّفُنَ الْبَعِيدَةَ. قَالَ خَالِدٌ: هَذَا أَجْمَلُ يَوْمٍ فِي الصَّيْفِ!",questions:[{q:"مَاذَا حَدَثَ لِلْقَلْعَةِ عِنْدَمَا جَاءَتِ الْمَوْجَةُ؟",skill:"حرفي",options:["هَدَمَتْ جُزْءًا مِنْهَا","زَادَتْهَا جَمَالًا","لَمْ يَحْدُثْ لَهَا شَيْءٌ"],answer:0},{q:"لِمَاذَا قَرَّرَتْ لَيْلَى أَنْ تَبْنِيَ الْقَلْعَةَ أَبْعَدَ عَنِ الْمَاءِ؟",skill:"استنتاجي",options:["لِتَكُونَ قَرِيبَةً مِنَ السُّفُنِ","لِأَنَّ الرَّمْلَ هُنَاكَ أَبْيَضُ","حَتَّى لَا تَهْدِمَهَا الْأَمْوَاجُ"],answer:2},{q:"مَاذَا فَعَلَتِ الْعَائِلَةُ عِنْدَ الْغُرُوبِ؟",skill:"ترتيب الأحداث",options:["سَبَحَتْ فِي الْبَحْرِ","أَكَلَتِ الْبِطِّيخَ وَشَاهَدَتِ السُّفُنَ","عَادَتْ إِلَى الْبَيْتِ"],answer:1}]},
-{id:'b2-3',grade:2,level:3,title:"الْهَدَفُ الْأَجْمَلُ",text:"فِي حَيِّ سَلِيمٍ مَلْعَبٌ صَغِيرٌ يَلْعَبُ فِيهِ الْأَطْفَالُ كُرَةَ الْقَدَمِ كُلَّ مَسَاءٍ. كَانَ سَلِيمٌ أَسْرَعَ لَاعِبٍ فِي الْفَرِيقِ، وَكَانَ يُحِبُّ أَنْ يُسَجِّلَ الْأَهْدَافَ وَحْدَهُ. فِي أَحَدِ الْأَيَّامِ جَاءَ وَلَدٌ جَدِيدٌ اسْمُهُ آدَمُ. كَانَ آدَمُ خَجُولًا وَيَقِفُ بَعِيدًا يَنْظُرُ إِلَى اللَّعِبِ. لَمْ يَطْلُبْ مِنْهُ أَحَدٌ أَنْ يَلْعَبَ. تَذَكَّرَ سَلِيمٌ أَوَّلَ يَوْمٍ لَهُ فِي الْحَيِّ، وَكَيْفَ شَعَرَ بِالْوَحْدَةِ. فَرَكَضَ نَحْوَ آدَمَ وَقَالَ: تَعَالَ، الْعَبْ مَعَنَا! فِي الْمُبَارَاةِ مَرَّرَ سَلِيمٌ الْكُرَةَ إِلَى آدَمَ، فَسَدَّدَهَا آدَمُ بِقُوَّةٍ وَسَجَّلَ هَدَفًا رَائِعًا. صَفَّقَ الْجَمِيعُ وَهَتَفُوا بِاسْمِهِ. وَمُنْذُ ذَلِكَ الْيَوْمِ صَارَ آدَمُ يَأْتِي إِلَى الْمَلْعَبِ كُلَّ مَسَاءٍ، وَصَارَ صَدِيقًا لِكُلِّ أَطْفَالِ الْحَيِّ. عَرَفَ سَلِيمٌ يَوْمَهَا أَنَّ فَرْحَةَ صَدِيقِهِ أَجْمَلُ مِنْ أَيِّ هَدَفٍ يُسَجِّلُهُ وَحْدَهُ.",questions:[{q:"لِمَاذَا رَكَضَ سَلِيمٌ نَحْوَ آدَمَ؟",skill:"استنتاجي",options:["لِأَنَّهُ تَذَكَّرَ شُعُورَهُ بِالْوَحْدَةِ","لِيَأْخُذَ مِنْهُ الْكُرَةَ","لِأَنَّ آدَمَ نَادَاهُ"],answer:0},{q:"مَا الدَّرْسُ الَّذِي تَعَلَّمَهُ سَلِيمٌ؟",skill:"استنتاجي",options:["أَنَّ السُّرْعَةَ أَهَمُّ شَيْءٍ","أَنْ يَلْعَبَ وَحْدَهُ دَائِمًا","أَنَّ فَرْحَةَ الصَّدِيقِ أَجْمَلُ مِنْ أَيِّ هَدَفٍ"],answer:2},{q:"مَا مَعْنَى كَلِمَةِ «خَجُولًا» فِي النَّصِّ؟",skill:"مفردات",options:["كَثِيرَ الْكَلَامِ","يَسْتَحِي مِنَ النَّاسِ","سَرِيعَ الْغَضَبِ"],answer:1}]},
-{id:'b3-1',grade:3,level:1,title:"النَّحْلَةُ النَّشِيطَةُ",text:"خَرَجَتْ نَحْلَةٌ صَغِيرَةٌ مِنْ خَلِيَّتِهَا فِي الصَّبَاحِ الْبَاكِرِ. طَارَتْ فَوْقَ الْحُقُولِ الْخَضْرَاءِ تَبْحَثُ عَنِ الْأَزْهَارِ. وَقَفَتْ عَلَى زَهْرَةٍ حَمْرَاءَ وَجَمَعَتْ مِنْهَا الرَّحِيقَ. ثُمَّ طَارَتْ إِلَى زَهْرَةٍ صَفْرَاءَ، ثُمَّ إِلَى زَهْرَةٍ بَيْضَاءَ. كَانَتْ تَعْمَلُ بِجِدٍّ وَلَا تَتْعَبُ. وَفِي الطَّرِيقِ رَأَتْ فَرَاشَةً مُلَوَّنَةً، فَقَالَتْ لَهَا: صَبَاحُ الْخَيْرِ يَا صَدِيقَتِي، الْأَزْهَارُ كَثِيرَةٌ الْيَوْمَ! فِي الْمَسَاءِ عَادَتْ إِلَى الْخَلِيَّةِ وَأَعْطَتِ الرَّحِيقَ لِأَخَوَاتِهَا. صَنَعَتِ النَّحَلَاتُ مِنْهُ عَسَلًا ذَهَبِيًّا لَذِيذًا. يُحِبُّ النَّاسُ الْعَسَلَ لِأَنَّهُ طَعَامٌ مُفِيدٌ وَحُلْوٌ. وَالنَّحْلُ يُعَلِّمُنَا أَنَّ الْعَمَلَ مَعًا يَصْنَعُ أَشْيَاءَ عَظِيمَةً.",questions:[{q:"مَاذَا جَمَعَتِ النَّحْلَةُ مِنَ الْأَزْهَارِ؟",skill:"حرفي",options:["الْمَاءَ","الرَّحِيقَ","الْأَوْرَاقَ"],answer:1},{q:"مَاذَا صَنَعَتِ النَّحَلَاتُ مِنَ الرَّحِيقِ؟",skill:"حرفي",options:["شَمْعًا أَبْيَضَ","خُبْزًا","عَسَلًا ذَهَبِيًّا"],answer:2},{q:"مَا الدَّرْسُ الَّذِي يُعَلِّمُنَا إِيَّاهُ النَّحْلُ؟",skill:"استنتاجي",options:["الْعَمَلُ مَعًا يَصْنَعُ أَشْيَاءَ عَظِيمَةً","النَّوْمُ طَوَالَ الْيَوْمِ","الطَّيَرَانُ وَحْدَنَا"],answer:0}]},
-{id:'b3-2',grade:3,level:2,title:"لَيْلَةٌ فِي الصَّحْرَاءِ",text:"فِي الْعُطْلَةِ سَافَرَ فَيْصَلٌ مَعَ جَدِّهِ إِلَى الصَّحْرَاءِ. رَكِبَا السَّيَّارَةَ سَاعَتَيْنِ حَتَّى وَصَلَا إِلَى خَيْمَةٍ كَبِيرَةٍ بَيْنَ الْكُثْبَانِ الرَّمْلِيَّةِ. رَأَى فَيْصَلٌ جَمَلًا يَمْشِي بِهُدُوءٍ، فَسَأَلَ جَدَّهُ: كَيْفَ يَعِيشُ الْجَمَلُ بِلَا مَاءٍ؟ قَالَ الْجَدُّ: الْجَمَلُ يَشْرَبُ كَثِيرًا مَرَّةً وَاحِدَةً، وَيَصْبِرُ عَلَى الْعَطَشِ أَيَّامًا طَوِيلَةً، وَلِذَلِكَ نُسَمِّيهِ سَفِينَةَ الصَّحْرَاءِ. فِي اللَّيْلِ جَلَسَا قُرْبَ النَّارِ يَشْرَبَانِ الْحَلِيبَ الدَّافِئَ وَيَأْكُلَانِ التَّمْرَ. وَحَكَى الْجَدُّ قِصَصًا عَنْ أَيَّامِ طُفُولَتِهِ فِي الْبَادِيَةِ. نَظَرَ فَيْصَلٌ إِلَى السَّمَاءِ فَرَأَى نُجُومًا كَثِيرَةً لَامِعَةً لَمْ يَرَهَا فِي الْمَدِينَةِ. أَشَارَ الْجَدُّ إِلَى نَجْمٍ سَاطِعٍ وَقَالَ: كَانَ أَجْدَادُنَا يَعْرِفُونَ الطَّرِيقَ بِالنُّجُومِ. نَامَ فَيْصَلٌ تِلْكَ اللَّيْلَةَ وَهُوَ يَحْلُمُ بِرِحْلَةٍ جَدِيدَةٍ.",questions:[{q:"لِمَاذَا يُسَمَّى الْجَمَلُ سَفِينَةَ الصَّحْرَاءِ؟",skill:"استنتاجي",options:["لِأَنَّهُ يَسْبَحُ فِي الْبَحْرِ","لِأَنَّهُ يَصْبِرُ عَلَى الْعَطَشِ وَيَحْمِلُ النَّاسَ فِي الصَّحْرَاءِ","لِأَنَّهُ كَبِيرٌ مِثْلَ السَّفِينَةِ"],answer:1},{q:"كَيْفَ كَانَ الْأَجْدَادُ يَعْرِفُونَ الطَّرِيقَ؟",skill:"حرفي",options:["بِالنُّجُومِ","بِالْخَرَائِطِ","بِالْهَاتِفِ"],answer:0},{q:"مَا مَعْنَى كَلِمَةِ «الْكُثْبَانِ» فِي النَّصِّ؟",skill:"مفردات",options:["الْأَشْجَارِ الْعَالِيَةِ","الْبُيُوتِ الْقَدِيمَةِ","تِلَالِ الرَّمْلِ"],answer:2}]},
-{id:'b3-3',grade:3,level:3,title:"الْقَمَرُ الَّذِي يَتَغَيَّرُ",text:"سَأَلَتْ هِنْدُ أُمَّهَا ذَاتَ مَسَاءٍ: لِمَاذَا يَتَغَيَّرُ شَكْلُ الْقَمَرِ؟ أَمْسِ كَانَ مِثْلَ الْهِلَالِ، وَالْيَوْمَ صَارَ أَكْبَرَ! ابْتَسَمَتِ الْأُمُّ وَأَحْضَرَتْ مِصْبَاحًا وَكُرَةً بَيْضَاءَ. قَالَتْ: لِنَتَخَيَّلْ أَنَّ الْمِصْبَاحَ هُوَ الشَّمْسُ، وَالْكُرَةَ هِيَ الْقَمَرُ، وَرَأْسَكِ هُوَ الْأَرْضُ. أَطْفَأَتِ الْأُمُّ الْأَنْوَارَ وَأَضَاءَتِ الْمِصْبَاحَ، ثُمَّ حَرَّكَتِ الْكُرَةَ حَوْلَ رَأْسِ هِنْدٍ بِبُطْءٍ. لَاحَظَتْ هِنْدُ أَنَّ الْجُزْءَ الْمُضِيءَ مِنَ الْكُرَةِ يَكْبُرُ ثُمَّ يَصْغُرُ. قَالَتِ الْأُمُّ: الْقَمَرُ لَا يُضِيءُ بِنَفْسِهِ، بَلْ يَعْكِسُ ضَوْءَ الشَّمْسِ. وَحِينَ يَدُورُ حَوْلَ الْأَرْضِ نَرَى مِنْهُ أَجْزَاءً مُخْتَلِفَةً مُضَاءَةً. فَمَرَّةً نَرَاهُ هِلَالًا رَفِيعًا، وَمَرَّةً نِصْفَ دَائِرَةٍ، وَمَرَّةً بَدْرًا كَامِلًا مُسْتَدِيرًا. وَهَذِهِ الْأَشْكَالُ تُسَمَّى أَطْوَارَ الْقَمَرِ. فَرِحَتْ هِنْدُ وَقَرَّرَتْ أَنْ تَرْسُمَ شَكْلَ الْقَمَرِ كُلَّ لَيْلَةٍ فِي دَفْتَرٍ صَغِيرٍ لِمُدَّةِ شَهْرٍ كَامِلٍ. وَقَالَتْ: سَأَكُونُ عَالِمَةَ فَلَكٍ صَغِيرَةً!",questions:[{q:"مِنْ أَيْنَ يَأْتِي ضَوْءُ الْقَمَرِ؟",skill:"حرفي",options:["مِنْ نَفْسِهِ","مِنَ النُّجُومِ","مِنَ الشَّمْسِ"],answer:2},{q:"مَاذَا قَرَّرَتْ هِنْدُ أَنْ تَفْعَلَ كُلَّ لَيْلَةٍ؟",skill:"حرفي",options:["أَنْ تَرْسُمَ شَكْلَ الْقَمَرِ","أَنْ تَنَامَ مُبَكِّرًا","أَنْ تُطْفِئَ الْمِصْبَاحَ"],answer:0},{q:"مَا مَعْنَى «أَطْوَارِ الْقَمَرِ» فِي النَّصِّ؟",skill:"مفردات",options:["أَسْمَاءُ النُّجُومِ","أَشْكَالُ الْقَمَرِ الْمُخْتَلِفَةُ","أَلْوَانُ السَّمَاءِ"],answer:1}]},
-{id:'b4-1',grade:4,level:1,title:"شجرة الجدّة",text:"زرعت الجدة فاطمة شجرة ليمون صغيرة أمام البيت قبل سنوات طويلة. كان حفيدها كريم يساعدها في سَقيها كل يوم بعد عودته من المدرسة. كبِرت الشجرة مع كريم، وصار ظلها واسعًا تجلس تحته العائلة في أيام الصيف الحارة. في الربيع تمتلئ أغصانها بأزهار بيضاء صغيرة لها رائحة جميلة، ثم تتحول الأزهار إلى ثمار خضراء، وبعد أسابيع تصبح صفراء لامعة. كانت الجدة تقطف الليمون وتصنع منه عصيرًا باردًا للجيران، ويوزعه كريم عليهم وهو يبتسم. وفي أحد الأيام هبّت عاصفة قوية فكسرت غصنًا كبيرًا من الشجرة. حزِن كريم كثيرًا، لكن الجدة قالت له: لا تقلق يا بُنيّ، الشجرة القوية تُنبت أغصانًا جديدة. اعتنى كريم بالشجرة أكثر من قبل، وبعد شهور ظهرت أوراق خضراء صغيرة مكان الغصن المكسور. فهِم كريم أن الصبر والعناية يصنعان المعجزات.",questions:[{q:"ماذا كانت الجدة تصنع من الليمون؟",skill:"حرفي",options:["مربى","عصيرا باردا","كعكا"],answer:1},{q:"ماذا حدث للشجرة بعد أن اعتنى بها كريم؟",skill:"حرفي",options:["ظهرت أوراق خضراء جديدة","يبست تماما","سقطت كلها"],answer:0},{q:"ما الفكرة الرئيسة للنص؟",skill:"الفكرة الرئيسة",options:["العاصفة تكسر الأشجار","الليمون طعمه حامض","الصبر والعناية يصنعان المعجزات"],answer:2}]},
-{id:'b4-2',grade:4,level:2,title:"مع أبي في البحر",text:"يستيقظ سالم قبل شروق الشمس في كل يوم سبت ليرافق والده الصيّاد إلى الميناء. تنتظرهما هناك قوارب خشبية ملوّنة تتمايل فوق الماء. يحمل الوالد الشِّباك، ويحمل سالم صندوق الطعام وقارورة الماء. يُبحر القارب بعيدًا عن الشاطئ، فيرى سالم الدلافين تقفز بين الأمواج، وطيور النورس تحلّق فوق رأسه. يضحك سالم ويلوّح لها بيده كأنها أصدقاؤه القدامى. يرمي الوالد الشبكة في البحر، وينتظران بصبر ساعة كاملة. ثم يسحبانها معًا، فتخرج مليئة بأسماك فضية لامعة. يختار الوالد الأسماك الكبيرة، ويعيد الصغيرة إلى البحر. يسأله سالم: لماذا تعيدها يا أبي؟ فيجيب: لكي تكبَر وتتكاثر، فيبقى البحر غنيًّا بالخير لنا ولأبنائنا من بعدنا. عند الظهر يعودان إلى سوق السمك المزدحم، حيث ينادي الباعة بأصوات عالية، ويتجمع الناس حول الصناديق ليختاروا أفضل الأسماك. يبيع الوالد صيده، ويشتري سالم كعكة ساخنة بالسمسم. في طريق العودة يشعر سالم بالتعب، لكنه سعيد لأنه تعلّم درسًا مهمًّا عن البحر.",questions:[{q:"لماذا يعيد الوالد الأسماك الصغيرة إلى البحر؟",skill:"استنتاجي",options:["لأنها لا تُباع","لكي تكبر وتتكاثر ويبقى البحر غنيا","لأنها مريضة"],answer:1},{q:"ماذا رأى سالم وهو في القارب؟",skill:"حرفي",options:["الدلافين وطيور النورس","الحيتان والقروش","السلاحف والبط"],answer:0},{q:"ما معنى كلمة «تتمايل» في النص؟",skill:"مفردات",options:["تغرق","تتوقف","تتحرك يمينا ويسارا"],answer:2}]},
-{id:'b4-3',grade:4,level:3,title:"مكتبة الحيّ الصغيرة",text:"لاحظت نور أن كثيرًا من أطفال حيّها لا يملكون كتبًا في بيوتهم. كانت هي تحب القراءة كثيرًا، وعندها رفّ مليء بالقصص التي قرأتها مرات عديدة. فكّرت نور طويلًا، ثم خطرت لها فكرة رائعة: لماذا لا نصنع مكتبة صغيرة يشترك فيها الجميع؟ أخبرت والدها بالفكرة، فأعجبته وساعدها في صنع صندوق خشبي كبير له باب زجاجي. دهنت نور الصندوق باللون الأزرق، وكتبت عليه بخط جميل: خُذْ كتابًا، واترُكْ كتابًا. وضع الوالد الصندوق قرب باب الحديقة العامة، ووضعت نور فيه عشر قصص من كتبها. في اليوم التالي وجدت أن ثلاث قصص قد اختفت، وأن مكانها كتابين جديدين وورقة صغيرة كُتب عليها: شكرًا لكِ! مع مرور الأسابيع صار الصندوق مكانًا يلتقي فيه أطفال الحي. يتبادلون الكتب، ويجلسون على المقاعد يقرؤون معًا، ويحكي بعضهم لبعض عن القصص التي أحبّوها. حتى الكبار بدؤوا يضعون كتبًا للطبخ والتاريخ والعلوم. شعرت نور بفخر كبير، وأدركت أن فكرة صغيرة نابعة من قلب طيّب يمكن أن تغيّر حيًّا كاملًا.",questions:[{q:"ماذا كُتب على صندوق المكتبة؟",skill:"حرفي",options:["ممنوع اللمس","خذ كتابا، واترك كتابا","مكتبة نور"],answer:1},{q:"ماذا أدركت نور في نهاية القصة؟",skill:"استنتاجي",options:["أن الكتب غالية الثمن","أن الكبار لا يقرؤون","أن فكرة صغيرة من قلب طيب تغير حيا كاملا"],answer:2},{q:"لماذا فكرت نور في صنع المكتبة؟",skill:"استنتاجي",options:["لأن كثيرا من الأطفال لا يملكون كتبا","لأنها أرادت بيع كتبها","لأن والدها طلب ذلك"],answer:0}]},
-{id:'b5-1',grade:5,level:1,title:"ريم تهزم خوفها",text:"كانت ريم تخاف من الماء منذ كانت صغيرة. وحين سجّلتها أمها في نادي السباحة، وقفت على حافة المسبح ترتجف ولا تريد أن تنزل. اقتربت منها المدرّبة سلمى وقالت بهدوء: لن نسبح اليوم، سنجلس فقط ونضع أقدامنا في الماء. في الدرس الثاني نزلت ريم إلى الجزء القليل العُمق وهي تمسك الحافة بقوة. وفي الدرس الثالث تعلّمت كيف تطفو على ظهرها وتتنفس ببطء. شعرت ريم أن الماء يحملها مثل سرير ناعم، فابتسمت لأول مرة. كانت المدرّبة تشجعها دائمًا وتقول: كل خطوة صغيرة هي نجاح كبير. مرّت الأسابيع، وصارت ريم تسبح من طرف المسبح إلى طرفه الآخر دون خوف. وفي نهاية العام أقام النادي سباقًا للمبتدئين، فاشتركت فيه ريم. لم تفُز بالمركز الأول، بل وصلت رابعة، لكنها خرجت من الماء وهي تضحك وترفع يديها. ركضت إليها أمها وعانقتها، فقالت ريم: اليوم هزمتُ خوفي، وهذا أهمّ من أي ميدالية.",questions:[{q:"كيف ساعدت المدرّبة سلمى ريم في الدرس الأول؟",skill:"حرفي",options:["دفعتها إلى الماء","جعلتها تضع قدميها في الماء فقط","طلبت منها العودة إلى البيت"],answer:1},{q:"لماذا كانت ريم سعيدة مع أنها لم تفز بالمركز الأول؟",skill:"استنتاجي",options:["لأنها هزمت خوفها","لأنها حصلت على ميدالية","لأن السباق انتهى"],answer:0},{q:"ماذا تعلّمت ريم في الدرس الثالث؟",skill:"ترتيب الأحداث",options:["الاشتراك في السباق","الجلوس على الحافة","الطفو على ظهرها والتنفس ببطء"],answer:2}]},
-{id:'b5-2',grade:5,level:2,title:"رحلة خيالية إلى المريخ",text:"في حصة العلوم عرضت المعلمة على الطلاب صورًا للمرّيخ، الكوكب الأحمر. سأل زياد: لماذا لونه أحمر؟ أجابت المعلمة: لأن تربته تحتوي على الكثير من الحديد الصدِئ، مثل المسمار القديم الذي تركناه في المطر. ثم قسّمت الطلاب إلى مجموعات، وطلبت من كل مجموعة أن تخطط لرحلة خيالية إلى المريخ. فكّرت مجموعة زياد في الأشياء التي يحتاجها روّاد الفضاء. كتبت لانا: نحتاج إلى الأكسجين، لأن هواء المريخ لا يصلح للتنفس. وأضاف زياد: ونحتاج إلى ملابس دافئة جدًّا، فالمريخ أبرد من أبرد صحراء على الأرض. وقال حمزة: يجب أن نأخذ بذورًا لنزرع طعامنا داخل بيت زجاجي. عرفوا أيضًا أن الرحلة قد تستغرق نحو سبعة أشهر، فقرروا أن يأخذوا كتبًا وألعابًا حتى لا يشعروا بالملل، وأن يرسلوا رسائل مصوّرة إلى عائلاتهم كل أسبوع. في نهاية الحصة رسمت المجموعة صاروخًا كبيرًا وكتبت عليه أسماء أعضائها. قالت المعلمة: ربما يكون أحدكم يومًا من أوائل البشر الذين يمشون على المريخ. نظر زياد من النافذة إلى السماء، وبدأ يحلم بذلك اليوم.",questions:[{q:"لماذا لون المريخ أحمر؟",skill:"حرفي",options:["لأن الشمس قريبة منه","لأن تربته فيها حديد صدئ","لأنه حار جدا"],answer:1},{q:"ما الشيئان اللذان قررت المجموعة أن تأخذهما في الرحلة؟",skill:"حرفي",options:["الأكسجين وملابس دافئة","المظلات والرمال","الأسماك والقوارب"],answer:0},{q:"كم قد تستغرق الرحلة إلى المريخ؟",skill:"حرفي",options:["سبعة أيام","سبع سنوات","نحو سبعة أشهر"],answer:2}]},
-{id:'b5-3',grade:5,level:3,title:"دكّان الجدّ في السوق القديم",text:"كل يوم خميس يزور عمر جدّه أبا محمود في دكّانه الصغير داخل السوق القديم. الدكّان مليء بأكياس التوابل الملوّنة: الكمّون البنّي، والكُركُم الأصفر، والفلفل الأحمر، والقرفة التي تملأ رائحتها المكان. يقف الجد خلف ميزانه النحاسي القديم، ويستقبل الزبائن بابتسامة لا تفارق وجهه. في ذلك اليوم دخلت امرأة مسنّة تمشي بصعوبة، وطلبت قليلًا من الزعتر والسُّمّاق. وزن الجد ما طلبته، ثم وضع في الكيس حفنة إضافية دون أن يقول شيئًا. وحين أخرجت المرأة نقودها، اكتشفت أنها لا تكفي. احمرّ وجهها خجلًا، لكن الجد قال لها بلطف: ادفعي ما تستطيعين يا خالة، والباقي هدية مني. خرجت المرأة وهي تدعو له بالخير. سأل عمر جدّه متعجّبًا: ألن تخسر بهذه الطريقة يا جدّي؟ ضحك الجد وأجاب: يا بُنيّ، التاجر الذكي لا يحسب الربح بالنقود فقط. هذه المرأة ستتذكر هذا الدكّان طوال عمرها، وستخبر جاراتها عنه، والناس يعودون دائمًا إلى المكان الذي يُعامَلون فيه باحترام. ثم أعطاه ملعقة صغيرة وطلب منه أن يملأ أكياس الزبائن. شعر عمر بالفخر، وقرر أن يكون تاجرًا أمينًا وكريمًا مثل جدّه حين يكبَر.",questions:[{q:"ماذا فعل الجد عندما لم تكفِ نقود المرأة؟",skill:"حرفي",options:["طردها من الدكان","أخذ منها الزعتر","قبل ما تستطيع والباقي هدية"],answer:2},{q:"ما معنى قول الجد: «التاجر الذكي لا يحسب الربح بالنقود فقط»؟",skill:"استنتاجي",options:["أن معاملة الناس باحترام تجلب ربحا أكبر","أن النقود لا قيمة لها","أن التاجر يجب أن يخسر"],answer:0},{q:"ما معنى كلمة «حفنة» في النص؟",skill:"مفردات",options:["كيس كبير","ملء الكف","ميزان صغير"],answer:1}]},
-{id:'b6-1',grade:6,level:1,title:"الروبوت الذي يسقي النباتات",text:"في معرض العلوم المدرسي قررت سلمى وصديقتها جنى أن تصنعا روبوتًا صغيرًا يسقي النباتات. جمعتا عُلبًا فارغة وأسلاكًا ومحرّكًا صغيرًا ولوحة إلكترونية بسيطة. عملتا أسبوعين كاملين بعد انتهاء الدروس، تقرآن الكتب وتشاهدان الدروس التعليمية وتسألان معلّم الحاسوب. فشلت المحاولة الأولى، فقد تحرّك الروبوت إلى الخلف بدل الأمام. وفي المحاولة الثانية سكب الماء كله على الطاولة. شعرت جنى بالإحباط وقالت: ربما لن ننجح أبدًا. لكن سلمى أجابت: كل خطأ يعلّمنا شيئًا جديدًا، لنبحث عن السبب. فحصتا الأسلاك واحدًا واحدًا، فوجدتا سلكين في غير مكانهما. كما اكتشفتا أن الأنبوب كان أطول مما يجب، فقصّتاه بالمقص. أصلحتا الخطأ، وأضافتا جهاز استشعار صغيرًا يقيس رطوبة التربة، حتى لا يسقي النبتة إلا عندما تحتاج إلى الماء. وفي يوم المعرض تحرّك الروبوت ببطء نحو أصيص جافّ، وسكب فيه كمية مناسبة من الماء، ثم توقف. صفّق الحاضرون بحماس، وحصلت الصديقتان على جائزة أفضل فكرة. قالت جنى ضاحكة: الآن فهمتُ أن الفشل جزء من النجاح.",questions:[{q:"ما المشكلتان اللتان حدثتا في المحاولتين الأولى والثانية؟",skill:"حرفي",options:["تحرك للخلف ثم سكب الماء كله","انكسر ثم احترق","توقف ثم ضاع"],answer:0},{q:"لماذا أضافت الصديقتان جهاز استشعار للرطوبة؟",skill:"استنتاجي",options:["ليتحرك بسرعة أكبر","لكي لا يسقي النبتة إلا عند حاجتها","ليصبح شكله أجمل"],answer:1},{q:"ما الفكرة الرئيسة للنص؟",skill:"الفكرة الرئيسة",options:["الروبوتات خطيرة","النباتات لا تحتاج إلى الماء","الفشل جزء من النجاح"],answer:2}]},
-{id:'b6-2',grade:6,level:2,title:"الماء أغلى من الذهب",text:"تقع قرية حسن في واحة خضراء وسط صحراء واسعة. تحيط بالقرية آلاف من أشجار النخيل، وتجري بين البساتين قنوات صغيرة تحمل الماء من عين قديمة. كان جدّ حسن يقول دائمًا: الماء في الصحراء أغلى من الذهب. لم يفهم حسن هذه العبارة جيدًا، حتى جاء صيف شديد الحرارة قلّ فيه ماء العين. بدأت بعض أشجار النخيل تذبُل، وظهر القلق على وجوه المزارعين. اجتمع أهل القرية في المجلس ليبحثوا عن حلّ. اقترح بعضهم حفر بئر جديدة، لكن الحفر يحتاج إلى وقت ومال كثير. عندها رفع حسن يده وقال: تعلّمنا في المدرسة أن الري بالتنقيط يوفّر كثيرًا من الماء، لأنه يوصل الماء إلى جذور الشجرة مباشرة بدل أن يضيع في القنوات. نظر الكبار بعضهم إلى بعض، ثم طلبوا منه أن يشرح الفكرة. في الأسابيع التالية عمل الجميع معًا، الكبار والصغار، يمدّون الأنابيب الرفيعة بين النخيل. وحين انتهوا لاحظوا أن الماء القليل صار يكفي البساتين كلها. وفي الخريف حملت النخيل تمرًا وفيرًا حلو المذاق. ربّت الجد على كتف حسن وقال: الآن فهمتَ لماذا الماء أغلى من الذهب، وفهمتُ أنا أن العلم كنز آخر.",questions:[{q:"ما المشكلة التي واجهت أهل القرية في الصيف؟",skill:"حرفي",options:["كثرة الأمطار","قلة ماء العين وذبول النخيل","هجوم الجراد"],answer:1},{q:"كيف يوفّر الري بالتنقيط الماء؟",skill:"حرفي",options:["يوصل الماء إلى الجذور مباشرة","يزيد ماء العين","يحفر بئرا جديدة"],answer:0},{q:"ما معنى كلمة «تذبل» في النص؟",skill:"مفردات",options:["تكبر وتثمر","تتحرك","تضعف وتجف"],answer:2}]},
-{id:'b6-3',grade:6,level:3,title:"رسالة في زجاجة",text:"بينما كانت دانة تتمشّى مع أخيها الأكبر طارق على شاطئ البحر، لمحت زجاجة خضراء تلمع بين الصخور. التقطتها بحذر، فوجدت في داخلها ورقة ملفوفة بخيط أزرق. فتحتها بصعوبة، وقرأت بصوت مرتفع: أنا تلميذة اسمي لينا، أعيش في جزيرة بعيدة. رميتُ هذه الزجاجة في البحر لأعرف إلى أين تأخذها التيارات. إذا وجدتها، فأرجو أن تكتب لي. كانت الرسالة مكتوبة بالعربية والإنجليزية، وفي أسفلها عنوان بريد إلكتروني لمدرستها. دهشت دانة وسألت: كيف وصلت الزجاجة إلى هنا؟ شرح لها طارق أن مياه المحيطات لا تبقى ساكنة، بل تتحرك في تيارات عظيمة تشبه أنهارًا داخل البحر، وقد تحمل الأشياء آلاف الكيلومترات. ثم أضاف بجدّية: وهذا يعني أيضًا أن النفايات التي نرميها في البحر قد تسافر بعيدًا وتؤذي الأسماك والسلاحف في أماكن لم نرَها قطّ. في المساء كتبت دانة رسالة إلى لينا، وأخبرتها عن مدينتها وعن الشاطئ الذي وجدت عليه الزجاجة. وبعد أيام وصلها ردّ طويل مع صور للجزيرة وشواطئها البيضاء. اتفقت الصديقتان على مشروع مشترك: أن تنظّم كلٌّ منهما مع زملائها حملة لتنظيف شاطئ مدينتها في اليوم نفسه. وفي صباح يوم السبت حملت دانة كيسًا كبيرًا وقفّازين، وهي تفكّر في صديقتها البعيدة التي تفعل الشيء نفسه على الجانب الآخر من البحر.",questions:[{q:"كيف وصلت الزجاجة من الجزيرة البعيدة إلى الشاطئ؟",skill:"حرفي",options:["رماها طارق من القارب","حملتها التيارات البحرية","أحضرها طائر"],answer:1},{q:"ما المشروع المشترك الذي اتفقت عليه دانة ولينا، ولماذا هو مهم؟",skill:"نقدي",options:["رحلة إلى الجزيرة؛ للتسلية","مسابقة رسم؛ للفوز بجائزة","حملة تنظيف الشاطئ؛ لحماية البحر وكائناته"],answer:2},{q:"لماذا يجب ألا نرمي النفايات في البحر؟",skill:"استنتاجي",options:["لأنها قد تسافر بعيدا وتؤذي الأسماك والسلاحف","لأنها تغير لون الماء فقط","لأنها تمنع السباحة"],answer:0}]}
-);
- /* ---------- Backup & restore ---------- */
-$('admin').insertAdjacentHTML('afterbegin',`<div class="card"><h2>💾 النسخ الاحتياطي</h2><p class="note">احفظي كل البيانات (المستخدمون، الطلاب، النتائج، النصوص) في ملف، واستعيديها على جهاز أو رابط آخر.</p><div class="row"><button onclick="exportData()">⬇️ تنزيل نسخة احتياطية</button><button class="alt" onclick="$('impFile').click()">⬆️ استعادة من ملف</button><input type="file" id="impFile" accept=".json,application/json" class="hidden" onchange="importData(this.files[0])"></div></div>`);
-function exportData(){
- const d={app:'sanfour',v:1,date:new Date().toISOString(),data:{}};
- Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>d.data[k]=localStorage.getItem(k));
- const a=document.createElement('a');
- a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'}));
- a.download='sanfour-backup-'+new Date().toISOString().slice(0,10)+'.json';
- document.body.appendChild(a);a.click();a.remove();
-}
- /* ---------- Fix: require last word + honest headline ---------- */
-const _sr=stopReading;
-window.stopReading=function(t){
- const was=phase;_sr(t);if(was!=='reading')return;
- lastIdx=-1;mode='last';$('modeBtn').classList.add('sel');
- $('rnote').textContent='① اضغطي على آخر كلمة وصل إليها الطالب. ② ثم اضغطي على كل كلمة أخطأ فيها (تصبح برتقالية). ③ ثم اضغطي «احسب النتيجة».';
- renderWords();
-};
-const _cr=calcResult;
-window.calcResult=function(){
- if(lastIdx<0){alert('اضغطي أولًا على آخر كلمة قرأها الطالب.');return;}
- _cr();
- const ok=R.wcpm>=TARGETS[P.grade][P.level-1]&&R.acc>=95;
- document.querySelector('#result h2').textContent=R.acc<90?'أحسنت المحاولة! واصل التدريب 🌱':ok?'قراءة رائعة! 🌟':'عمل جيد! استمر 💪';
- if(R.secs<15)$('rstats').insertAdjacentHTML('beforeend','<p class="note" style="grid-column:1/-1;color:var(--c);font-weight:700">⚠️ القراءة كانت أقل من ١٥ ثانية، لذلك النتيجة تقديرية وغير دقيقة.</p>');
-};
- /* ---------- Free reading mode (no time limit) ---------- */
-let timed=localStorage.getItem('sanfour_timed')==='1';
-$('startBtn').insertAdjacentHTML('afterend','<button id="modeT" class="alt small" onclick="toggleTimed()"></button>');
-function modeLabel(){$('modeT').textContent=timed?'⏱ دقيقة واحدة (اضغطي للتغيير)':'♾️ بدون حد زمني (اضغطي للتغيير)';$('timer').textContent=timed?ar(60):ar(0);}
-function toggleTimed(){timed=!timed;localStorage.setItem('sanfour_timed',timed?'1':'0');modeLabel();}
-const _op2=openPassage;
-window.openPassage=function(id){_op2(id);$('modeT').classList.remove('hidden');modeLabel();};
-const _st=startReading;
-window.startReading=async function(){
- $('modeT').classList.add('hidden');
- await _st();
- if(!timed){
-  clearInterval(tick);$('timer').textContent=ar(0);
-  tick=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=ar(s);if(s>=600)stopReading(true);},250);
-  $('rnote').textContent=(rec?'🔴 جارٍ التسجيل… ':'')+'لا يوجد حد زمني. اضغطي «انتهى» عندما يتوقف الطالب عن القراءة.';
- }
-};
-const _sr2=stopReading;
-window.stopReading=function(t){
- const was=phase;_sr2(t);if(was!=='reading')return;
- if(!timed&&t===true)elapsed=600;
- if(t!==true&&confirm('هل قرأ الطالب النص كاملًا حتى آخر كلمة؟')){
-  lastIdx=words.length-1;mode='err';$('modeBtn').classList.remove('sel');
-  $('rnote').textContent='اضغطي على كل كلمة أخطأ فيها الطالب (تصبح برتقالية)، ثم اضغطي «احسب النتيجة».';
-  renderWords();
- }
-};
- /* ---------- AI transcription assistant ---------- */
-let lastBlob=null,aiPause=new Set(),aiRep=new Set();
-(function(){
- const css=document.createElement('style');
- css.textContent='.w.aip{border-right:5px solid var(--y)}.w.air{text-decoration:underline wavy var(--t);text-decoration-thickness:3px}';
- document.head.appendChild(css);
- $('sbtns').insertAdjacentHTML('afterbegin','<button id="aiBtn" class="coral" onclick="aiAnalyze()">🤖 تحليل بالذكاء الاصطناعي</button>');
- $('ptext').insertAdjacentHTML('afterend','<div id="aiOut" class="note"></div>');
-})();
-const _cou=URL.createObjectURL.bind(URL);
-URL.createObjectURL=function(o){if(o instanceof Blob&&/^(audio|video)/.test(o.type))lastBlob=o;return _cou(o);};
+
+/* ========== AI transcription assistant ========== */
 const normAr=s=>String(s).replace(/[\u064B-\u0652\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0621-\u064A]/g,'');
-function alignAI(P,H){
- const m=P.length,n=H.length,D=[],B=[];
+function alignAI(Pw,H){
+ const m=Pw.length,n=H.length,D=[],B=[];
  for(let i=0;i<=m;i++){D[i]=new Array(n+1);B[i]=new Array(n+1);}
  for(let i=0;i<=m;i++)for(let j=0;j<=n;j++){
   if(!i&&!j){D[0][0]=0;B[0][0]='';continue;}
   let best=Infinity,b='';
-  if(i&&j){const c=D[i-1][j-1]+(P[i-1]==H[j-1]?0:1);if(c<best){best=c;b=P[i-1]==H[j-1]?'m':'s';}}
+  if(i&&j){const c=D[i-1][j-1]+(Pw[i-1]==H[j-1]?0:1);if(c<best){best=c;b=Pw[i-1]==H[j-1]?'m':'s';}}
   if(i&&D[i-1][j]+1<best){best=D[i-1][j]+1;b='d';}
   if(j&&D[i][j-1]+1<best){best=D[i][j-1]+1;b='i';}
   D[i][j]=best;B[i][j]=b;}
@@ -694,8 +487,6 @@ function applyAI(hw,text){
  renderWords();
  $('aiOut').innerHTML=`<div class="card" style="background:var(--bg);margin:10px 0 0"><b>🤖 اقتراحات الذكاء الاصطناعي:</b> ${ar(errs.size)} خطأ مقترح · ${ar(aiPause.size)} توقف طويل · ${ar(aiRep.size)} تكرار محتمل<br>🟧 خطأ مقترح · <span style="border-right:5px solid var(--y);padding-right:4px">توقف طويل قبل الكلمة</span> · <span style="text-decoration:underline wavy var(--t)">تكرار محتمل</span><br>راجعي الاقتراحات، واضغطي على أي كلمة لإضافة خطأ أو إزالته قبل حساب النتيجة.<br><br><b>ما سمعه الذكاء الاصطناعي:</b> ${esc(text)}</div>`;
 }
-const _rw=renderWords;window.renderWords=function(){_rw();document.querySelectorAll('#ptext .w').forEach((el,i)=>{el.classList.toggle('aip',aiPause.has(i));el.classList.toggle('air',aiRep.has(i));});};
-const _op=openPassage;window.openPassage=function(id){lastBlob=null;aiPause=new Set();aiRep=new Set();if($('aiOut'))$('aiOut').innerHTML='';_op(id);};
 async function aiAnalyze(){
  if(!lastBlob){alert('لا يوجد تسجيل صوتي لهذه القراءة. تأكدي من السماح باستخدام الميكروفون.');return;}
  const b=$('aiBtn');b.disabled=true;b.textContent='⏳ جارٍ التحليل…';
@@ -707,8 +498,181 @@ async function aiAnalyze(){
  }catch(e){alert('تعذّر التحليل الآلي: '+e.message+'\nيمكنك متابعة التصحيح يدويًّا.');}
  b.disabled=false;b.textContent='🤖 تحليل بالذكاء الاصطناعي';
 }
- migrate();renderHome();
-if(sessionStorage.getItem('sanfour_user')&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}else gateMode();
+
+/* ========== Doctor PIN lock ========== */
+let pinNext=null,pinMode='enter',pinFirst='';
+function unlocked(){return Date.now()<+(sessionStorage.getItem('sanfour_unlock')||0)}
+function setUnlocked(){sessionStorage.setItem('sanfour_unlock',Date.now()+10*60000);$('lockBtn').classList.remove('hidden')}
+function lockNow(){sessionStorage.removeItem('sanfour_unlock');$('lockBtn').classList.add('hidden');goHome();}
+function needPin(fn){
+ if(unlocked()){setUnlocked();fn();return;}
+ pinNext=fn;$('pinIn').value='';$('pinErr').textContent='';
+ if(!localStorage.getItem('sanfour_pin')){pinMode='new1';$('pinTitle').textContent='🔐 إنشاء رمز الدكتورة';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام لحماية صفحات الدكتورة.';}
+ else{pinMode='enter';$('pinTitle').textContent='🔒 صفحة الدكتورة';$('pinNote').textContent='أدخلي الرمز للمتابعة.';}
+ $('pinBox').classList.remove('hidden');setTimeout(()=>$('pinIn').focus(),50);
+}
+function pinOK(){
+ const v=$('pinIn').value.trim();
+ if(!/^\d{4,6}$/.test(v)){$('pinErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ if(pinMode=='new1'){pinFirst=v;pinMode='new2';$('pinIn').value='';$('pinNote').textContent='أعيدي إدخال الرمز للتأكيد.';$('pinErr').textContent='';return;}
+ if(pinMode=='new2'){if(v!==pinFirst){pinMode='new1';$('pinIn').value='';$('pinErr').textContent='الرمزان غير متطابقين، حاولي مجددًا.';return;}localStorage.setItem('sanfour_pin',v);}
+ else if(v!==localStorage.getItem('sanfour_pin')){$('pinErr').textContent='الرمز غير صحيح.';$('pinIn').value='';return;}
+ $('pinBox').classList.add('hidden');setUnlocked();const f=pinNext;pinNext=null;if(f)f();
+}
+function pinCancel(){$('pinBox').classList.add('hidden');pinNext=null;}
+function pinForgot(){if(confirm('إعادة تعيين الرمز تمسح كل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
+
+/* ========== Login gate ========== */
+const meName=()=>sessionStorage.getItem('sanfour_user');
+const RN={admin:'مدير',doctor:'دكتورة / معلمة'};
+function fixRoles(){const u=getUsers();if(u.length&&!u.some(x=>x.role=='admin')){u.forEach((x,i)=>x.role=i==0?'admin':(x.role||'doctor'));saveUsers(u);}}
+const curRole=()=>(getUsers().find(x=>x.u==meName())||{}).role;
+function gateMode(){
+ const first=!getUsers().length;
+ $('lgTitle').textContent=first?'إنشاء حساب الدكتورة':'تسجيل الدخول';
+ $('lgBtn').textContent=first?'إنشاء الحساب':'دخول';
+ $('lgPin2').classList.toggle('hidden',!first);
+ $('lgHint').textContent=first?'اختاري اسم مستخدم ورمزًا من ٤ إلى ٦ أرقام.':'';
+}
+function loginOK(){
+ const u=$('lgUser').value.trim(),p=$('lgPin').value.trim(),users=getUsers();
+ $('lgErr').textContent='';
+ if(!u){$('lgErr').textContent='اكتبي اسم المستخدم.';return;}
+ if(!/^\d{4,6}$/.test(p)){$('lgErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ let user;
+ if(!users.length){
+  if(p!==$('lgPin2').value.trim()){$('lgErr').textContent='الرمزان غير متطابقين.';return;}
+  user={u,pin:p,role:'admin'};saveUsers([user]);
+ }else{
+  user=users.find(x=>x.u==u&&x.pin==p);
+  if(!user){$('lgErr').textContent='اسم المستخدم أو الرمز غير صحيح.';$('lgPin').value='';return;}
+ }
+ localStorage.setItem('sanfour_pin',user.pin);
+ sessionStorage.setItem('sanfour_user',user.u);
+ enterApp();
+}
+function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classList.remove('hidden');fixRoles();goHome();}
+function logout(){sessionStorage.clear();['lgUser','lgPin','lgPin2'].forEach(i=>$(i).value='');gateMode();$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');$('loginGate').classList.remove('hidden');}
+function gateForgot(){if(confirm('إعادة التعيين تمسح الحساب وكل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
+document.addEventListener('keydown',e=>{
+ if(e.key!='Enter')return;
+ if(!$('loginGate').classList.contains('hidden'))loginOK();
+ else if(!$('pinBox').classList.contains('hidden'))pinOK();
+});
+
+/* ========== Admin & users ========== */
+function updateUserBar(){
+ if(!meName()){$('userBar').innerHTML='';return;}
+ $('userBar').innerHTML=`<span style="font-size:19px">👤 ${esc(meName())} · ${RN[curRole()]||''}</span>`+(curRole()=='admin'?'<button class="alt small" onclick="openAdmin()">⚙️ إدارة المستخدمين</button>':'');
+}
+function openAdmin(){if(curRole()!='admin'){alert('هذه الصفحة للمدير فقط.');return;}needPin(()=>{renderAdmin();show('admin');});}
+function renderAdmin(){
+ const users=getUsers(),me=meName();
+ $('admErr').textContent='';
+ $('admList').innerHTML='<table><tr><th>المستخدم</th><th>الدور</th><th></th></tr>'+users.map((x,i)=>`<tr><td>${esc(x.u)}${x.u==me?' (أنتِ)':''}</td><td><select onchange="setRole(${i},this.value)" ${x.u==me?'disabled':''}><option value="doctor" ${x.role!='admin'?'selected':''}>${RN.doctor}</option><option value="admin" ${x.role=='admin'?'selected':''}>${RN.admin}</option></select></td><td><div class="row"><button class="alt small" onclick="resetPin(${i})">تغيير الرمز</button>${x.u!=me?`<button class="alt small" onclick="delUser(${i})">حذف</button>`:''}</div></td></tr>`).join('')+'</table>';
+}
+function addUser(){
+ const u=$('admU').value.trim(),p=$('admPin').value.trim(),r=$('admRole').value,users=getUsers();
+ if(!u){$('admErr').textContent='اكتبي اسم المستخدم.';return;}
+ if(users.some(x=>x.u==u)){$('admErr').textContent='اسم المستخدم موجود مسبقًا.';return;}
+ if(!/^\d{4,6}$/.test(p)){$('admErr').textContent='الرمز من ٤ إلى ٦ أرقام.';return;}
+ users.push({u,pin:p,role:r});saveUsers(users);$('admU').value='';$('admPin').value='';renderAdmin();alert('تمت إضافة المستخدم ✅');
+}
+function setRole(i,r){
+ const users=getUsers();
+ if(r!='admin'&&users[i].role=='admin'&&users.filter(x=>x.role=='admin').length<=1){alert('يجب أن يبقى مدير واحد على الأقل.');renderAdmin();return;}
+ users[i].role=r;saveUsers(users);renderAdmin();
+}
+function resetPin(i){
+ const p=(prompt('الرمز الجديد (٤–٦ أرقام):')||'').trim();if(!p)return;
+ if(!/^\d{4,6}$/.test(p)){alert('الرمز من ٤ إلى ٦ أرقام.');return;}
+ const users=getUsers();users[i].pin=p;saveUsers(users);
+ if(users[i].u==meName())localStorage.setItem('sanfour_pin',p);
+ alert('تم تغيير الرمز ✅');
+}
+function delUser(i){
+ const users=getUsers();
+ if(users[i].role=='admin'&&users.filter(x=>x.role=='admin').length<=1){alert('لا يمكن حذف المدير الوحيد.');return;}
+ if(!confirm('حذف المستخدم «'+users[i].u+'»؟'))return;
+ users.splice(i,1);saveUsers(users);renderAdmin();
+}
+
+/* ========== Backup & restore ========== */
+function exportData(){
+ const d={app:'sanfour',v:1,date:new Date().toISOString(),data:{}};
+ Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>d.data[k]=localStorage.getItem(k));
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'}));
+ a.download='sanfour-backup-'+new Date().toISOString().slice(0,10)+'.json';
+ document.body.appendChild(a);a.click();a.remove();
+}
+function importData(f){
+ if(!f)return;
+ const rd=new FileReader();
+ rd.onload=()=>{
+  try{
+   const d=JSON.parse(rd.result);
+   if(d.app!=='sanfour'||!d.data)throw 0;
+   if(!confirm('ستُستبدل كل البيانات الحالية على هذا الجهاز بالنسخة الاحتياطية. هل تريدين المتابعة؟'))return;
+   Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));
+   Object.entries(d.data).forEach(([k,v])=>localStorage.setItem(k,v));
+   sessionStorage.clear();
+   alert('تمت الاستعادة ✅ سجّلي الدخول بحساب النسخة الاحتياطية.');
+   location.reload();
+  }catch(e){alert('الملف غير صالح.');}
+ };
+ rd.readAsText(f);
+}
+
+/* ========== Parent weekly report ========== */
+const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+function parentData(sid){
+ const st=getStudents().find(x=>x.id==sid)||{name:'—'}, now=Date.now(), wk=7*864e5;
+ const all=getHist().filter(r=>r.sid==sid).reverse();
+ const week=all.filter(r=>r.ts&&now-r.ts<=wk), use=week.length?week:all.slice(-5);
+ return {n:st.name.split(' ')[0],f:new Date(now-wk).toLocaleDateString('ar'),t:new Date(now).toLocaleDateString('ar'),s:use.length,w:use.map(r=>r.wcpm),c:use.map(r=>r.comp),wk:week.length>0};
+}
+function parentLink(sid){return location.origin+location.pathname+'#parent='+b64e(parentData(sid));}
+function shareParent(){const url=parentLink(profSid);window.open('https://wa.me/?text='+encodeURIComponent('تقرير القراءة الأسبوعي من سنفور 🌟\n'+url),'_blank');}
+function copyParent(){const url=parentLink(profSid);if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',url));else prompt('انسخي الرابط:',url);}
+function addParentCard(){
+ if(!profSid||$('parentCard'))return;
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="parentCard"><h2>👪 تقرير ولي الأمر الأسبوعي</h2><p class="note">رابط بسيط يرى فيه ولي الأمر ملخص الأسبوع فقط، دون تفاصيل الأخطاء.</p><div class="row"><button onclick="window.open(parentLink(profSid),'_blank')">عرض التقرير</button><button class="yellow" onclick="shareParent()">مشاركة عبر واتساب</button><button class="alt" onclick="copyParent()">نسخ الرابط</button></div></div>`);
+}
+function renderParent(d){
+ const last=d.w.length?d.w[d.w.length-1]:0, first=d.w[0]||0, avgC=d.c.length?Math.round(d.c.reduce((a,b)=>a+b,0)/d.c.length):0;
+ const stars='⭐'.repeat(Math.min(5,Math.max(1,d.s)));
+ const trend=d.w.length<2?'نحتاج جلسات أكثر لرؤية التطور.':last>first?'سرعة القراءة تتحسن هذا الأسبوع 📈':last==first?'سرعة القراءة ثابتة، والتدريب اليومي يصنع الفرق.':'كان أسبوعًا صعبًا قليلًا، والتشجيع في البيت يساعد كثيرًا 💛';
+ $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${d.f} إلى ${d.t}`:'آخر الجلسات'}</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
+ +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('كلمة في الدقيقة (آخر جلسة)',ar(last))+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div><div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
+ +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
+}
+
+/* ========== Start ========== */
+window.addEventListener('load',()=>{
+ if(location.hash.startsWith('#parent=')){
+  try{const d=b64d(location.hash.slice(8));$('loginGate').classList.add('hidden');renderParent(d);show('parent');}catch(e){}
+  return;
+ }
+ migrate();gateMode();
+ if(meName()&&getUsers().length){enterApp();if(unlocked())$('lockBtn').classList.remove('hidden');}
+});
 </script>
+<script src="passages.js"></script>
 </body>
 </html>
+File 2: create passages.js (the 18 passages)
+
+GitHub → Add file → Create new file → name it exactly passages.js
+Scroll up in this chat to my message that begins "All 18 passages are ready", copy its big code block (it starts with /* ---------- All 18 built-in passages ---------- */ and ends with );), and paste it.
+Commit changes.
+File 3: check api/transcribe.js. It should be the full Groq file, ending with:
+
+    const j = await r.json();
+    if (!r.ok) return res.status(500).json({ error: (j.error && j.error.message) || 'فشل التفريغ' });
+    res.status(200).json({ text: j.text || '', words: j.words || [] });
+  } catch (e) {
+    res.status(500).json({ error: String((e && e.message) || e) });
+  }
+};
