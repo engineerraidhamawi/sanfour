@@ -19,3 +19,10 @@ module.exports = async (req, res) => {
       headers: { Authorization: 'Bearer ' + process.env.GROQ_API_KEY },
       body: fd
     });
+    const j = await r.json();
+    if (!r.ok) return res.status(500).json({ error: (j.error && j.error.message) || 'فشل التفريغ' });
+    res.status(200).json({ text: j.text || '', words: j.words || [] });
+  } catch (e) {
+    res.status(500).json({ error: String((e && e.message) || e) });
+  }
+};
