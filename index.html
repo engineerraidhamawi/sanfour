@@ -9,59 +9,95 @@
 :root{--y:#FFC93C;--t:#1FA6A0;--c:#FF7A59;--s:#2D3A4A;--bg:#FFF8EC}
 *{box-sizing:border-box}
 body{margin:0;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--s)}
-header{display:flex;align-items:center;gap:12px;padding:14px 20px}
-header img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--s)}
-header h1{margin:0;font-size:32px}
+
+/* Header & layout */
+header{display:flex;align-items:center;gap:12px;padding:6px 14px}
+header img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--s)}
+header h1{margin:0;font-size:24px}
 header h1 span{color:var(--y)}
-main{max-width:900px;margin:0 auto;padding:0 16px 40px}
-.card{background:#fff;border-radius:24px;padding:24px;margin:16px 0;box-shadow:0 6px 20px rgba(45,58,74,.08)}
+main{max-width:900px;margin:0 auto;padding:0 12px 12px}
+.card{background:#fff;border-radius:18px;padding:14px 16px;margin:10px 0;box-shadow:0 6px 20px rgba(45,58,74,.08)}
 .hidden{display:none!important}
-h2{margin:0 0 12px}
+h2{margin:0 0 8px;font-size:20px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-button{font-family:inherit;font-size:20px;font-weight:700;border:none;border-radius:999px;padding:12px 26px;cursor:pointer;background:var(--t);color:#fff}
+.note{font-size:15px;color:#5b6675}
+.tag{display:inline-block;font-size:15px;padding:3px 12px;border-radius:999px;background:var(--y);margin-bottom:8px}
+
+/* Buttons */
+button{font-family:inherit;font-size:17px;font-weight:700;border:none;border-radius:999px;padding:9px 18px;cursor:pointer;background:var(--t);color:#fff}
 button:disabled{opacity:.4;cursor:default}
 button.alt{background:#fff;color:var(--t);border:2px solid var(--t)}
 button.yellow{background:var(--y);color:var(--s)}
 button.coral{background:var(--c)}
 button.sel{background:var(--s);color:#fff;border-color:var(--s)}
-button.small{font-size:16px;padding:6px 16px}
-input,select,textarea{font-family:inherit;font-size:19px;padding:10px 14px;border-radius:14px;border:2px solid #ddd;background:#fff;color:var(--s)}
+button.small{font-size:14px;padding:5px 12px}
+.etb{font-size:16px!important;padding:8px 14px!important}
+
+/* Forms */
+input,select,textarea{font-family:inherit;font-size:17px;padding:8px 12px;border-radius:14px;border:2px solid #ddd;background:#fff;color:var(--s)}
 input{width:100%;max-width:340px}
 input.full{max-width:none;margin:8px 0}
-textarea{width:100%;font-size:22px;line-height:1.9;margin-top:6px}
+textarea{width:100%;font-size:19px;line-height:1.8;margin-top:6px}
 label{display:block;font-weight:700;margin:14px 0 6px}
-.qcard{border:2px solid #f0e6d2;border-radius:18px;padding:14px;margin:12px 0}
+.qcard{border:2px solid #f0e6d2;border-radius:18px;padding:10px;margin:8px 0}
 .optrow{flex-wrap:nowrap}
 .optrow input[type=radio]{width:26px;max-width:26px;height:26px;flex:none;padding:0}
-.plist button{display:block;width:100%;text-align:right;margin:8px 0;background:var(--bg);color:var(--s);border:2px solid var(--y)}
-.passage{font-size:32px;line-height:2.3}
+
+/* Passage list */
+.plist button{display:block;width:100%;text-align:right;margin:5px 0;padding:9px 16px;background:var(--bg);color:var(--s);border:2px solid var(--y)}
+
+/* Reading screen */
+#read .card:first-child{display:flex;flex-direction:column;max-height:calc(100vh - 150px);margin-bottom:0}
+#read h2{font-size:22px;margin:0}
+#read>.row{position:sticky;bottom:0;background:var(--bg);padding:8px 0;margin:0;z-index:20}
+#rnote{margin:4px 0}
+#ptext{overflow:auto;flex:1;min-height:120px;font-size:clamp(20px,2.6vw,30px);line-height:2.05;padding-left:6px}
+#aiOut{max-height:28vh;overflow:auto}
+.timer{font-size:30px;font-weight:800;color:var(--c);min-width:60px;text-align:center}
+#cfBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+#cfBar button{font-size:14px!important;padding:5px 12px!important}
+
+/* Word marks */
 .w{padding:2px 4px;border-radius:8px;cursor:pointer}
 .w.err{background:var(--c);color:#fff}
 .w.last{outline:3px solid var(--t)}
 .w.after{opacity:.35}
 .w.aip{border-right:5px solid var(--y)}
 .w.air{text-decoration:underline wavy var(--t);text-decoration-thickness:3px}
-.timer{font-size:44px;font-weight:800;color:var(--c);min-width:90px;text-align:center}
-.big{font-size:64px;font-weight:800;margin:0}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.stat{background:var(--bg);border-radius:18px;padding:16px;text-align:center}
-.stat b{display:block;font-size:34px}
-.opt{display:block;width:100%;margin:10px 0;text-align:right;background:var(--bg);color:var(--s);border:2px solid #e8dcc4;font-size:24px}
+.w.dis{border-bottom:3px dashed #8a6fd1}
+.w.hl{background:var(--y);color:var(--s)}
+.w.dim{opacity:.15}
+
+/* Results & quiz */
+.big{font-size:48px;font-weight:800;margin:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat{background:var(--bg);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-size:26px}
+.opt{display:block;width:100%;margin:6px 0;padding:10px 16px;text-align:right;background:var(--bg);color:var(--s);border:2px solid #e8dcc4;font-size:19px}
 .opt.chosen{border-color:var(--t);background:#e3f5f4}
-.tag{display:inline-block;font-size:15px;padding:3px 12px;border-radius:999px;background:var(--y);margin-bottom:8px}
-.note{font-size:18px;color:#5b6675}
+#qtext{font-size:22px!important;margin-bottom:6px}
 table{width:100%;border-collapse:collapse;font-size:18px}
 td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
+
+/* PIN, login, fixed buttons */
 #pinBox{position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:99}
 #pinBox .card{max-width:380px;width:90%;text-align:center}
 #pinIn{max-width:none;text-align:center;font-size:32px;letter-spacing:12px;margin:12px 0}
-#lockBtn{position:fixed;bottom:16px;left:16px;z-index:50}
 #loginGate{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
 #loginGate .card{max-width:420px;width:100%;text-align:center}
 #loginGate img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--s)}
 #loginGate input{max-width:none;margin:8px 0;text-align:center}
 #lgPin,#lgPin2{letter-spacing:10px;font-size:28px}
-#logoutBtn{position:fixed;bottom:16px;right:16px;z-index:50}
+#logoutBtn{position:fixed;top:8px;left:12px;z-index:50}
+#lockBtn{position:fixed;top:8px;left:110px;z-index:50}
+
+/* Phones */
+@media (max-width:600px){
+ button{font-size:15px;padding:8px 14px}
+ .timer{font-size:24px}
+ #ptext{font-size:21px}
+ #read .card:first-child{max-height:calc(100vh - 190px)}
+}
 </style>
 </head>
 <body>
@@ -145,29 +181,35 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
   <button class="yellow" onclick="calcResult()">احسب النتيجة</button>
  </div>
 </section>
+
 <section id="result" class="hidden">
  <div class="card" style="text-align:center"><h2 id="resTitle">قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p></div>
  <div class="card"><div class="stats" id="rstats"></div><audio id="audio" controls class="hidden" style="width:100%;margin-top:14px"></audio></div>
  <div class="row"><button onclick="startQuestions()">إلى أسئلة الفهم</button></div>
 </section>
+
 <section id="quiz" class="hidden">
  <div class="card"><p class="note" id="qnum"></p><span class="tag" id="qskill"></span><h2 id="qtext" style="font-size:28px"></h2><div id="qopts"></div></div>
  <div class="row"><button id="nextQ" onclick="nextQuestion()" disabled>التالي</button></div>
 </section>
+
 <section id="done" class="hidden">
  <div class="card" style="text-align:center"><p style="font-size:70px;margin:0">🎉</p><h2 style="font-size:34px">أحسنت! أنهيت الأسئلة</h2><p class="note">شكرًا على قراءتك الرائعة 🌟</p></div>
  <div class="row"><button class="yellow" onclick="needPin(()=>show('summary'))">🔒 تقرير الدكتورة</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div>
 </section>
+
 <section id="summary" class="hidden">
  <div class="card"><h2>تقرير الجلسة (للدكتورة)</h2><div class="stats" id="sstats"></div></div>
  <div class="card"><h2>الفهم حسب المهارة</h2><div id="skills"></div></div>
  <div class="card"><h2>التوصية</h2><p id="reco" style="font-size:22px"></p><p class="note">النتائج مؤشر للمتابعة فقط، وليست تشخيصًا.</p></div>
  <div class="row"><button onclick="openProfile(curSid)">📈 ملف الطالب</button><button class="alt" onclick="goHome()">جلسة جديدة</button></div>
 </section>
+
 <section id="history" class="hidden">
  <div class="card"><h2>سجل النتائج</h2><div id="htable"></div></div>
  <div class="row"><button onclick="goHome()">رجوع</button><button class="alt" onclick="clearHistory()">مسح السجل</button></div>
 </section>
+
 <section id="admin" class="hidden">
  <div class="card"><h2>💾 النسخ الاحتياطي</h2><p class="note">احفظي كل البيانات (المستخدمون، الطلاب، النتائج، النصوص) في ملف، واستعيديها على جهاز أو رابط آخر.</p>
   <div class="row"><button onclick="exportData()">⬇️ تنزيل نسخة احتياطية</button><button class="alt" onclick="$('impFile').click()">⬆️ استعادة من ملف</button><input type="file" id="impFile" accept=".json,application/json" class="hidden" onchange="importData(this.files[0])"></div></div>
@@ -181,6 +223,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  </div>
  <div class="row"><button class="alt" onclick="goHome()">رجوع</button></div>
 </section>
+
 <section id="parent" class="hidden"><div id="parentBody"></div></section>
 </main>
 
@@ -188,7 +231,6 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 <button id="lockBtn" class="alt small hidden" onclick="lockNow()">🔒 قفل</button>
 <div id="loginGate"><div class="card"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1 style="font-size:40px;margin:10px 0">سنفو<span style="color:var(--y)">ر</span></h1><h2 id="lgTitle"></h2><input id="lgUser" placeholder="اسم المستخدم" autocomplete="username"><input id="lgPin" type="password" inputmode="numeric" maxlength="6" placeholder="الرمز" autocomplete="current-password"><input id="lgPin2" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="أعيدي إدخال الرمز"><p class="note" id="lgErr" style="color:var(--c);font-weight:700"></p><button id="lgBtn" style="width:100%" onclick="loginOK()"></button><p class="note" id="lgHint"></p><p><a href="#" onclick="gateForgot();return false" class="note">نسيت الرمز؟</a></p></div></div>
 <button id="logoutBtn" class="alt small hidden" onclick="logout()">🚪 خروج</button>
-
 <script>
 /* ========== Core data & helpers ========== */
 const PASSAGES=[];
@@ -498,8 +540,7 @@ async function aiAnalyze(){
  }catch(e){alert('تعذّر التحليل الآلي: '+e.message+'\nيمكنك متابعة التصحيح يدويًّا.');}
  b.disabled=false;b.textContent='🤖 تحليل بالذكاء الاصطناعي';
 }
-
-/* ========== Doctor PIN lock ========== */
+ /* ========== Doctor PIN lock ========== */
 let pinNext=null,pinMode='enter',pinFirst='';
 function unlocked(){return Date.now()<+(sessionStorage.getItem('sanfour_unlock')||0)}
 function setUnlocked(){sessionStorage.setItem('sanfour_unlock',Date.now()+10*60000);$('lockBtn').classList.remove('hidden')}
@@ -649,7 +690,7 @@ function renderParent(d){
  +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
 }
 
- /* ========== Parent consent ========== */
+/* ========== Parent consent ========== */
 document.body.insertAdjacentHTML('beforeend',`<div id="consentBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow:auto"><div class="card" style="max-width:580px;width:100%">
 <h2>📝 موافقة ولي الأمر على التسجيل الصوتي</h2>
 <p id="cnStudent" style="font-size:20px;font-weight:700"></p>
@@ -708,6 +749,7 @@ function resetConsent(){
  if(!confirm('سيُطلب من ولي الأمر تحديد الموافقة من جديد قبل القراءة القادمة. متابعة؟'))return;
  setConsent(profSid,null);openProfile(profSid);
 }
+
 /* ========== Cloud sync + clinics (Vercel) ========== */
 let cToken=localStorage.getItem('sfc_token')||'',cEmail=localStorage.getItem('sfc_email')||'',cRole=localStorage.getItem('sfc_role')||'',cClinic=localStorage.getItem('sfc_clinic')||'',syncT=null,syncing=false,applying=false;
 const _lsSet=Storage.prototype.setItem,_lsRem=Storage.prototype.removeItem;
@@ -823,7 +865,6 @@ const ETYPES=['حركة (تشكيل)','حرف متشابه','همزة / تاء �
 const DTYPES=['تكرار','إطالة صوت','انحباس / توقف طويل'];
 const ETIPS={'حركة (تشكيل)':'قراءة كلمات مشكولة ببطء ثم بسرعة، مع التركيز على الحركة قبل النطق.','حرف متشابه':'بطاقات للحروف المتشابهة (ب/ت/ث، ح/ج/خ، د/ذ) مع التركيز على عدد النقاط ومكانها.','همزة / تاء مربوطة':'تمييز أشكال الهمزة، ونطق التاء المربوطة وصلًا (تاء) ووقفًا (هاء).','حرف مدّ':'التدريب على الفرق بين الحركة القصيرة والمدّ (كَتَبَ / كاتِب).','لام شمسية / قمرية':'تصنيف كلمات إلى شمسية وقمرية وقراءتها بصوت مرتفع.','استبدال كلمة':'القراءة المتكررة للنص نفسه مع تتبّع الكلمات بالإصبع.','حذف كلمة':'تتبّع السطر بالإصبع أو بمسطرة لتقليل تخطّي الكلمات.','قلب حروف':'تهجئة الكلمة حرفًا حرفًا قبل قراءتها كاملة.','سابقة / لاحقة':'تقسيم الكلمة إلى سابقة + أصل + لاحقة قبل القراءة.'};
 let etype={},dtype={},etIdx=-1;
-(function(){const c=document.createElement('style');c.textContent='.w.dis{border-bottom:3px dashed #8a6fd1}.etb{font-size:16px!important;padding:8px 14px!important}';document.head.appendChild(c);})();
 document.body.insertAdjacentHTML('beforeend',`<div id="etBox" class="hidden" style="position:fixed;left:0;right:0;bottom:0;z-index:120;background:#fff;box-shadow:0 -8px 30px rgba(45,58,74,.25);border-radius:24px 24px 0 0;padding:18px;max-height:70vh;overflow:auto"><div class="row" style="justify-content:space-between"><h2 id="etWord" style="margin:0"></h2><button class="alt small" onclick="$('etBox').classList.add('hidden')">إغلاق</button></div><p class="note" style="margin:8px 0 6px">نوع الخطأ (يُحسب خطأ):</p><div class="row" id="etErr"></div><p class="note" style="margin:12px 0 6px">علامة تأتأة (للرصد فقط، لا تُحسب خطأ):</p><div class="row" id="etDis"></div><div class="row" style="margin-top:14px"><button class="alt small" onclick="clearMark()">✖ إزالة كل العلامات عن الكلمة</button></div></div>`);
 function openEt(i){
  etIdx=i;$('etWord').textContent='«'+words[i]+'»';
@@ -879,7 +920,8 @@ window.addParentCard=function(){
  html+='<p class="note">هذه المؤشرات للمتابعة التربوية فقط، وليست تشخيصًا.</p></div>';
  $('prBody').insertAdjacentHTML('beforeend',html);
 };
- /* ========== PDF student report ========== */
+
+/* ========== PDF student report ========== */
 function buildReport(sid,notes){
  const st=getStudents().find(x=>x.id==sid);if(!st)return null;
  const ss=getHist().filter(r=>r.sid==sid).reverse();if(!ss.length)return null;
@@ -937,9 +979,9 @@ window.addParentCard=function(){
  if(!profSid||$('pdfCard')||!getHist().some(r=>r.sid==profSid))return;
  $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="pdfCard"><h2>🖨️ تقرير PDF للطالب</h2><p class="note">تقرير جاهز للطباعة أو الحفظ بصيغة PDF: الملخص، الرسوم البيانية، المهارات، أنواع الأخطاء، والتوصية.</p><textarea id="repNotes" rows="3" placeholder="ملاحظات الدكتورة (اختياري) — تظهر في التقرير"></textarea><div class="row" style="margin-top:8px"><button onclick="printReport()">🖨️ إنشاء التقرير</button></div></div>`);
 };
- /* ========== Model reading audio ========== */
+
+/* ========== Model reading audio ========== */
 let mAudio=null,mTimer=null,heard=false;
-(function(){const c=document.createElement('style');c.textContent='.w.hl{background:var(--y);color:var(--s)}';document.head.appendChild(c);})();
 $('startBtn').insertAdjacentHTML('beforebegin','<button id="modelBtn" class="yellow" onclick="toggleModel()">🔊 استمع للقراءة النموذجية</button>');
 $('rnote').insertAdjacentHTML('afterend','<p class="note" style="font-size:15px">💡 للتقييم الرسمي: اقرأ أولًا ثم استمع. الاستماع قبل القراءة مفيد للتدريب لكنه يرفع النتيجة.</p>');
 function stopModel(){
@@ -979,8 +1021,9 @@ window.showSummary=function(){
   const c=$('etCard')||$('skills').closest('.card');
   c.insertAdjacentHTML('afterend','<div class="card" id="heardNote"><p style="color:var(--c);font-weight:700;margin:0">🔊 استمع الطالب للقراءة النموذجية قبل هذه الجلسة، لذلك قد تكون النتيجة أعلى من مستواه الفعلي.</p></div>');
  }
- };
- /* ========== Microphone check ========== */
+};
+
+/* ========== Microphone check ========== */
 document.body.insertAdjacentHTML('beforeend',`<div id="micBox" class="hidden" style="position:fixed;inset:0;background:rgba(45,58,74,.55);display:flex;align-items:center;justify-content:center;z-index:160;padding:16px"><div class="card" style="max-width:480px;width:100%;text-align:center"><h2>🎙️ اختبار الميكروفون</h2><p id="micStep" style="font-size:20px"></p><div style="background:#eee;border-radius:999px;height:22px;overflow:hidden;margin:14px 0"><div id="micBar" style="height:100%;width:0;background:var(--t);transition:width .1s"></div></div><p id="micMsg" style="font-size:18px"></p><div class="row" style="justify-content:center"><button type="button" id="micGo" class="hidden" onclick="micDone()">✅ ابدأ القراءة</button><button type="button" class="alt" onclick="micTest()">↻ إعادة الاختبار</button><button type="button" class="alt small" onclick="micDone()">تخطّي</button></div></div></div>`);
 $('modeT').insertAdjacentHTML('afterend','<button type="button" id="micT" class="alt small" onclick="micManual()">🎙️ اختبار الميكروفون</button>');
 let micStream=null,micCtx=null,micRAF=null,micOK=false;
@@ -1038,50 +1081,10 @@ window.startReading=async function(){
 };
 const _op5=openPassage;
 window.openPassage=function(id){_op5(id);$('micT').classList.remove('hidden');};
- /* ========== Compact layout ========== */
-(function(){
- const c=document.createElement('style');
- c.textContent=`
-header{padding:6px 14px}
-header img{width:40px;height:40px;border-width:2px}
-header h1{font-size:24px}
-main{padding:0 12px 12px}
-.card{padding:14px 16px;margin:10px 0;border-radius:18px}
-h2{font-size:20px;margin:0 0 8px}
-button{font-size:17px;padding:9px 18px}
-button.small{font-size:14px;padding:5px 12px}
-.note{font-size:15px}
-input,select,textarea{font-size:17px;padding:8px 12px}
-textarea{font-size:19px;line-height:1.8}
-.stats{grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
-.stat{padding:10px;border-radius:14px}
-.stat b{font-size:26px}
-.big{font-size:48px}
-.timer{font-size:30px;min-width:60px}
-.opt{font-size:19px;padding:10px 16px;margin:6px 0}
-#qtext{font-size:22px!important;margin-bottom:6px}
-.plist button{margin:5px 0;padding:9px 16px}
-.qcard{padding:10px;margin:8px 0}
-#read .card:first-child{display:flex;flex-direction:column;max-height:calc(100vh - 150px);margin-bottom:0}
-#read h2{font-size:22px;margin:0}
-#rnote{margin:4px 0}
-#ptext{overflow:auto;flex:1;min-height:120px;font-size:clamp(20px,2.6vw,30px);line-height:2.05;padding-left:6px}
-#aiOut{max-height:28vh;overflow:auto}
-#read>.row{position:sticky;bottom:0;background:var(--bg);padding:8px 0;margin:0;z-index:20}
-#logoutBtn{top:8px;bottom:auto;left:12px;right:auto}
-#lockBtn{top:8px;bottom:auto;left:110px}
-@media (max-width:600px){
- button{font-size:15px;padding:8px 14px}
- .timer{font-size:24px}
- #ptext{font-size:21px}
- #read .card:first-child{max-height:calc(100vh - 190px)}
-}`;
- document.head.appendChild(c);
-})();
- /* ========== Reading comfort tools ========== */
+
+/* ========== Reading comfort tools ========== */
 let cf=Object.assign({fs:0,sp:false,ruler:false,tint:1},JSON.parse(localStorage.getItem('sanfour_comfort')||'{}')),rLine=0;
 const TINTS=['#ffffff','#FFF8EC','#E8F4FF','#FFF6C9'],TN=['أبيض','كريمي','أزرق فاتح','أصفر فاتح'];
-(function(){const c=document.createElement('style');c.textContent='#cfBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#cfBar button{font-size:14px!important;padding:5px 12px!important}.w.dim{opacity:.15}';document.head.appendChild(c);})();
 $('rnote').insertAdjacentHTML('beforebegin',`<div id="cfBar"><span class="note" style="font-size:14px">راحة القراءة:</span><button type="button" class="alt" onclick="cfSize(-1)">A−</button><button type="button" class="alt" onclick="cfSize(1)">A+</button><button type="button" class="alt" id="cfSp" onclick="cfToggle('sp')">↔ تباعد</button><button type="button" class="alt" id="cfRu" onclick="cfToggle('ruler')">📏 مسطرة السطر</button><button type="button" class="alt" id="cfTi" onclick="cfTint()">🎨 لون الخلفية</button><span id="cfNav" class="hidden"><button type="button" class="alt" onclick="cfLine(-1)">▲ السطر السابق</button> <button type="button" class="alt" onclick="cfLine(1)">▼ السطر التالي</button></span></div>`);
 function cfSave(){localStorage.setItem('sanfour_comfort',JSON.stringify(cf));}
 function cfLines(){const ws=[...document.querySelectorAll('#ptext .w')],tops=[];ws.forEach(w=>{const t=w.offsetTop;if(!tops.some(x=>Math.abs(x-t)<6))tops.push(t);});tops.sort((a,b)=>a-b);return{ws,tops};}
@@ -1125,7 +1128,8 @@ document.addEventListener('keydown',e=>{
  if(e.key=='ArrowDown'){e.preventDefault();cfLine(1);}
  if(e.key=='ArrowUp'){e.preventDefault();cfLine(-1);}
 });
- /* ========== Start ========== */
+
+/* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
   try{const d=b64d(location.hash.slice(8));$('loginGate').classList.add('hidden');renderParent(d);show('parent');}catch(e){}
