@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الخصوصية وشروط الاستخدام — سنفور</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--y:#FFC93C;--t:#1FA6A0;--c:#FF7A59;--s:#2D3A4A;--bg:#FFF8EC}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--s);line-height:1.9}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px}
+header img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--s)}
+header h1{margin:0;font-size:26px}header h1 span{color:var(--y)}
+main{max-width:820px;margin:0 auto;padding:0 14px 40px}
+.card{background:#fff;border-radius:20px;padding:18px 22px;margin:12px 0;box-shadow:0 6px 20px rgba(45,58,74,.08)}
+h2{margin:0 0 6px;font-size:24px;color:var(--t)}
+h3{margin:16px 0 4px;font-size:19px}
+p,li{font-size:17px;margin:4px 0}
+ul{padding-right:22px;margin:4px 0}
+.nav{display:flex;flex-wrap:wrap;gap:8px}
+.nav a{text-decoration:none;font-weight:700;border-radius:999px;padding:8px 18px;border:2px solid var(--t);color:var(--t);background:#fff}
+.nav a.main{background:var(--t);color:#fff}
+.note{color:#5b6675;font-size:15px}
+.warn{border-right:5px solid var(--c);padding-right:12px}
+</style>
+</head>
+<body>
+<header><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" alt=""><h1>سنفو<span>ر</span></h1></header>
+<main>
+<div class="card">
+ <h2 style="color:var(--s)">الخصوصية وشروط الاستخدام</h2>
+ <p class="note">آخر تحديث: ١٤ نوفمبر ٢٠٢٦</p>
+ <div class="nav"><a href="#parents">👪 لأولياء الأمور</a><a href="#clinics">🏥 للعيادات</a><a class="main" href="/">العودة إلى التطبيق</a></div>
+</div>
+
+<div class="card" id="parents">
+ <h2>👪 لأولياء الأمور: كيف نحمي بيانات طفلكم</h2>
+ <h3>ما سنفور؟</h3>
+ <p>أداة تساعد الأخصائية على متابعة طلاقة القراءة والفهم لدى الأطفال من ٦ إلى ١٢ سنة. النتائج للمتابعة التربوية فقط، <b>وليست تشخيصًا</b>.</p>
+ <h3>ما البيانات التي تُحفظ؟</h3>
+ <ul>
+  <li>اسم الطفل (يمكن استخدام الاسم الأول فقط)، والصف والمستوى.</li>
+  <li>نتائج الجلسات: كلمة في الدقيقة، والدقة، والفهم، وأنواع الأخطاء.</li>
+  <li>علامات التأتأة، للرصد فقط، ولا تُحسب أخطاء.</li>
+  <li>موافقتكم على التسجيل الصوتي، واسم ولي الأمر، وتاريخ الموافقة.</li>
+ </ul>
+ <h3>التسجيل الصوتي</h3>
+ <ul>
+  <li>لا يُسجَّل صوت الطفل إلا بموافقتكم، ويمكن إجراء الجلسة دون تسجيل.</li>
+  <li>يُستخدم التسجيل أثناء الجلسة فقط، <b>ولا يُحفظ داخل التطبيق بعد انتهائها</b>.</li>
+  <li>عند استخدام «التحليل بالذكاء الاصطناعي» فقط، يُرسل التسجيل إلى خدمة خارجية (Groq) لتحويل الصوت إلى نص. الاقتراحات تُعرض على الأخصائية، وهي التي تقرر.</li>
+ </ul>
+ <h3>أين تُحفظ البيانات؟</h3>
+ <p>على جهاز العيادة. وإذا فعّلت العيادة المزامنة السحابية، تُحفظ نسخة على خوادم سحابية (Vercel وUpstash) لا يصل إليها إلا أعضاء العيادة نفسها.</p>
+ <p><b>لا نبيع البيانات، ولا نستخدمها للإعلانات.</b></p>
+ <h3>تقرير ولي الأمر الأسبوعي</h3>
+ <p class="warn">التقرير رابط يحتوي على ملخص فقط (الاسم الأول، وعدد الجلسات، والسرعة، والفهم). من يملك الرابط يستطيع فتحه، فلا تشاركوه إلا مع من تثقون به.</p>
+ <h3>حقوقكم</h3>
+ <ul>
+  <li>سحب الموافقة على التسجيل الصوتي في أي وقت.</li>
+  <li>طلب الاطلاع على بيانات طفلكم أو تصحيحها أو حذفها.</li>
+  <li>لذلك تواصلوا مع العيادة مباشرة.</li>
+ </ul>
+</div>
+
+<div class="card" id="clinics">
+ <h2>🏥 للعيادات: شروط الاستخدام</h2>
+ <h3>طبيعة الأداة</h3>
+ <ul>
+  <li>سنفور أداة فحص ومتابعة، <b>وليست أداة تشخيص</b>. القرار المهني للأخصائية دائمًا.</li>
+  <li>الأهداف المبدئية لسرعة القراءة والنصوص والأسئلة مبدئية، وتحتاج إلى تحقق من أخصائيين.</li>
+  <li>اقتراحات الذكاء الاصطناعي مساعدة فقط، وتجب مراجعتها قبل اعتماد النتيجة.</li>
+ </ul>
+ <h3>مسؤوليات العيادة</h3>
+ <ul>
+  <li>الحصول على موافقة ولي الأمر قبل أي تسجيل صوتي، ويُنصح بالاحتفاظ بنسخة ورقية موقّعة.</li>
+  <li>تعريف أولياء الأمور بهذه الصفحة.</li>
+  <li>الالتزام بقوانين حماية البيانات المعمول بها في بلدكم.</li>
+  <li>جمع أقل قدر ممكن من البيانات، مثل الاسم الأول بدل الاسم الكامل.</li>
+ </ul>
+ <h3>الحسابات والأمان</h3>
+ <ul>
+  <li>لكل دكتورة حسابها الخاص. لا تُشارَك كلمات المرور ولا الرموز.</li>
+  <li>يزيل مدير العيادة أي عضو يغادر العيادة فورًا.</li>
+  <li>استخدموا «🔒 قفل» و«🚪 خروج» على الأجهزة المشتركة.</li>
+  <li>نزّلوا نسخة احتياطية بشكل دوري من صفحة الإدارة.</li>
+ </ul>
+ <h3>الحذف</h3>
+ <p>حذف طالب يحذف جلساته من الجهاز، ومن السحابة عند المزامنة.</p>
+ <h3>الخدمات الخارجية</h3>
+ <p>Vercel (الاستضافة)، وUpstash (التخزين السحابي)، وGroq (تحويل الصوت إلى نص)، وGoogle Fonts (الخطوط).</p>
+ <h3>حدود المسؤولية</h3>
+ <p>يُقدَّم سنفور في مرحلته التجريبية «كما هو»، دون ضمان لدقة النتائج في كل الحالات.</p>
+ <h3>التواصل</h3>
+ <p>للاستفسارات أو طلبات الحذف: <b dir="ltr">your-email@example.com</b></p>
+</div>
+
+<p class="note" style="text-align:center">سنفور — نقرأ معًا، خطوة بخطوة 🦘</p>
+</main>
+</body>
+</html>
