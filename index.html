@@ -1129,7 +1129,89 @@ document.addEventListener('keydown',e=>{
  if(e.key=='ArrowUp'){e.preventDefault();cfLine(-1);}
 });
 
-/* ========== Start ========== */
+/* ========== Home practice mode (child) ========== */
+const HP_KEY='sfp_log';
+let hpD=null,hpP=null,hpW=[],hpT0=0,hpTick=null,hpAud=null,hpAT=null,hpQi=0;
+const hpLog=()=>{try{return Object.assign({stars:0,reads:0,best:{},days:[]},JSON.parse(localStorage.getItem(HP_KEY)||'{}'));}catch(e){return {stars:0,reads:0,best:{},days:[]};}};
+const hpSave=o=>localStorage.setItem(HP_KEY,JSON.stringify(o));
+(function(){const c=document.createElement('style');c.textContent=`
+#hp{position:fixed;inset:0;z-index:500;background:var(--bg);overflow:auto;padding:12px}
+#hp .wrap{max-width:820px;margin:0 auto}
+#hp .pbtn{display:block;width:100%;text-align:right;margin:8px 0;background:#fff;color:var(--s);border:2px solid var(--y);font-size:20px;padding:14px 18px}
+#hp .ptx{font-size:30px;line-height:2.3;background:#FFF8EC;border-radius:14px;padding:8px 14px}
+#hp .ptx span{padding:2px 3px;border-radius:8px}
+#hp .ptx span.on{background:var(--y)}
+#hp .hpTm{font-size:34px;font-weight:800;color:var(--c)}
+@media(max-width:600px){#hp .ptx{font-size:24px}}`;document.head.appendChild(c);})();
+function hpStopAud(){if(hpAud){hpAud.pause();hpAud=null;}clearInterval(hpAT);document.querySelectorAll('#hpTx span.on').forEach(e=>e.classList.remove('on'));const b=$('hpListen');if(b)b.textContent='🔊 استمع لرو';}
+function hpOpen(d){hpD=d;document.body.insertAdjacentHTML('beforeend','<div id="hp"><div class="wrap" id="hpBody"></div></div>');hpHome();}
+function hpHead(){return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="row"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--s)"><b style="font-size:24px">سنفو<span style="color:var(--y)">ر</span></b></div></div>`;}
+function hpHome(){
+ hpStopAud();clearInterval(hpTick);
+ const lg=hpLog(),list=PASSAGES.filter(p=>p.grade==hpD.g&&p.level<=hpD.l).sort((a,b)=>b.level-a.level);
+ $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:44px;margin:0">🦘</p><h2 style="font-size:28px">مرحبًا يا ${esc(hpD.n)}!</h2><p style="font-size:20px;margin:0">هيا نتدرّب على القراءة مع رو</p><div class="stats" style="margin-top:12px">${stat('نجومك ⭐',ar(lg.stars))+stat('أيام التدريب 🔥',ar(lg.days.length))+stat('مرات القراءة 📖',ar(lg.reads))}</div></div>
+<div class="card"><h2>اختر قصة</h2>${list.length?list.map(p=>`<button class="pbtn" onclick="hpRead('${p.id}')">${p.level==hpD.l?'⭐':'🌱'} ${esc(p.title)}${lg.best[p.id]?` <span class="note">— أفضل وقت: ${ar(lg.best[p.id])} ث</span>`:''}</button>`).join(''):'<p class="note">لا توجد قصص لهذا المستوى بعد.</p>'}</div>
+<div class="card"><h2>👪 لولي الأمر</h2><p>اجلسوا بجانب طفلكم ١٠ دقائق يوميًّا: يستمع أولًا لرو، ثم يقرأ بصوت مرتفع، ثم يعيد القراءة. امدحوا الجهد قبل السرعة.</p><p class="note">لا يُسجَّل صوت الطفل، ولا تُرسل نتائج التدريب إلى العيادة. التقدّم محفوظ على هذا الجهاز فقط.</p></div>`;
+ window.scrollTo(0,0);$('hp').scrollTop=0;
+}
+function hpRead(id){
+ hpStopAud();clearInterval(hpTick);
+ hpP=PASSAGES.find(p=>p.id==id);if(!hpP)return;
+ hpW=hpP.text.trim().split(/\s+/);
+ $('hpBody').innerHTML=hpHead()+`<div class="row"><button class="alt small" onclick="hpHome()">🏠 القصص</button></div>
+<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(hpP.title)}</h2><span class="hpTm" id="hpTm">${ar(0)}</span></div><p class="note">💡 استمع أولًا لرو، ثم اقرأ القصة بصوت مرتفع.</p><div class="ptx" id="hpTx">${hpW.map(w=>`<span>${esc(w)}</span>`).join(' ')}</div></div>
+<div class="row" id="hpCtl"><button class="yellow" id="hpListen" onclick="hpListen()">🔊 استمع لرو</button><button id="hpGo" onclick="hpStart()">▶️ ابدأ القراءة</button><button class="coral hidden" id="hpStop" onclick="hpStop()">⏹ انتهيت!</button></div><div id="hpRes"></div>`;
+ $('hp').scrollTop=0;
+}
+function hpListen(){
+ if(hpAud){hpStopAud();return;}
+ hpAud=new Audio(hpP.id+'.mp3');
+ const wts=hpW.map(w=>w.replace(/[\u064B-\u0652\u0670]/g,'').length+2),tot=wts.reduce((a,b)=>a+b,0),cum=[];let s=0;wts.forEach(x=>{s+=x;cum.push(s/tot);});
+ hpAud.onerror=()=>{hpStopAud();alert('التسجيل غير متاح لهذه القصة.');};
+ hpAud.onended=hpStopAud;
+ hpAud.play().then(()=>{$('hpListen').textContent='⏹ إيقاف';hpAT=setInterval(()=>{if(!hpAud||!hpAud.duration)return;const f=hpAud.currentTime/hpAud.duration;let i=cum.findIndex(c=>c>=f);if(i<0)i=hpW.length-1;document.querySelectorAll('#hpTx span').forEach((e,k)=>e.classList.toggle('on',k==i));},120);}).catch(()=>{hpStopAud();alert('تعذّر تشغيل الصوت.');});
+}
+function hpStart(){
+ hpStopAud();hpT0=Date.now();
+ $('hpGo').classList.add('hidden');$('hpListen').classList.add('hidden');$('hpStop').classList.remove('hidden');$('hpRes').innerHTML='';
+ hpTick=setInterval(()=>{const s=Math.floor((Date.now()-hpT0)/1000);$('hpTm').textContent=ar(s);if(s>=600)hpStop();},250);
+}
+function hpStop(){
+ clearInterval(hpTick);
+ const secs=Math.max(1,Math.round((Date.now()-hpT0)/1000)),lg=hpLog(),prev=lg.best[hpP.id],today=new Date().toISOString().slice(0,10);
+ lg.reads++;lg.stars++;if(!prev||secs<prev)lg.best[hpP.id]=secs;if(!lg.days.includes(today))lg.days.push(today);hpSave(lg);
+ const msg=prev?(secs<prev?`🚀 أسرع من أفضل مرة بـ ${ar(prev-secs)} ثانية!`:'💪 كل قراءة تجعلك أقوى. جرّب مرة أخرى!'):'🌟 هذه أول مرة تقرأ هذه القصة!';
+ $('hpCtl').classList.add('hidden');
+ $('hpRes').innerHTML=`<div class="card" style="text-align:center"><p style="font-size:56px;margin:0">👏</p><h2 style="font-size:28px">أحسنت يا ${esc(hpD.n)}!</h2><p style="font-size:22px;margin:0">قرأت القصة في ${ar(secs)} ثانية</p><p style="font-size:20px">${msg}</p><p style="font-size:20px;font-weight:700">+⭐ نجمة جديدة</p></div><div class="row"><button onclick="hpRead('${hpP.id}')">🔁 اقرأ مرة أخرى</button>${(hpP.questions||[]).length?'<button class="yellow" onclick="hpQ(0)">❓ أسئلة القصة</button>':''}<button class="alt" onclick="hpHome()">🏠 قصص أخرى</button></div>`;
+ $('hpRes').scrollIntoView({behavior:'smooth'});
+}
+function hpQ(i){
+ hpQi=i;const qs=hpP.questions||[],q=qs[i];
+ if(!q){const lg=hpLog();lg.stars++;hpSave(lg);
+  $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:64px;margin:0">🎉</p><h2 style="font-size:28px">أنهيت الأسئلة يا ${esc(hpD.n)}!</h2><p style="font-size:20px;font-weight:700">+⭐ نجمة جديدة</p></div><div class="row"><button onclick="hpRead('${hpP.id}')">🔁 اقرأ القصة مرة أخرى</button><button class="alt" onclick="hpHome()">🏠 قصص أخرى</button></div>`;return;}
+ $('hpBody').innerHTML=hpHead()+`<div class="card"><p class="note">السؤال ${ar(i+1)} من ${ar(qs.length)}</p><h2 style="font-size:26px">${esc(q.q)}</h2>${q.options.map((o,k)=>`<button class="opt" onclick="hpPick(${k},this)">${esc(o)}</button>`).join('')}<p id="hpFb" style="font-size:22px;font-weight:700;min-height:34px"></p></div><div class="row"><button class="alt small" onclick="hpRead('${hpP.id}')">📖 ارجع إلى القصة</button></div>`;
+ $('hp').scrollTop=0;
+}
+function hpPick(k,el){
+ const q=hpP.questions[hpQi];
+ if(k===q.answer){el.classList.add('chosen');$('hpFb').textContent='✅ أحسنت!';document.querySelectorAll('#hp .opt').forEach(b=>b.disabled=true);setTimeout(()=>hpQ(hpQi+1),1000);}
+ else{el.disabled=true;$('hpFb').textContent='🤔 فكّر مرة أخرى، أنت قريب!';}
+}
+window.addEventListener('load',()=>{if(location.hash.startsWith('#practice=')){try{hpOpen(b64d(location.hash.slice(10)));}catch(e){alert('رابط التدريب غير صالح.');}}});
+/* Doctor side: practice link card in the student profile */
+function practiceLink(sid,g,l){const st=getStudents().find(x=>x.id==sid)||{name:'—'};return location.origin+location.pathname+'#practice='+b64e({n:st.name.split(' ')[0],g:+g,l:+l});}
+const hpLinkNow=()=>practiceLink(profSid,$('hpG').value,$('hpL').value);
+function hpShare(){window.open('https://wa.me/?text='+encodeURIComponent('🦘 تدريب القراءة في البيت مع سنفور\n'+hpLinkNow()),'_blank');}
+function hpCopy(){const u=hpLinkNow();if(navigator.clipboard)navigator.clipboard.writeText(u).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',u));else prompt('انسخي الرابط:',u);}
+const _apc7=addParentCard;
+window.addParentCard=function(){
+ _apc7();
+ if(!profSid||$('hpCard'))return;
+ const last=getHist().find(r=>r.sid==profSid&&r.grade),g=last?last.grade:grade,l=last?last.level:level;
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="hpCard"><h2>🏠 التدريب في البيت</h2><p class="note">رابط للطفل يتدرّب به في البيت: يستمع لرو، ويقرأ مع مؤقّت، ويجيب عن الأسئلة. لا يُسجَّل الصوت، ولا تُرسل النتائج إلى العيادة.</p><div class="row"><select id="hpG">${[1,2,3,4,5,6].map(x=>`<option value="${x}" ${x==g?'selected':''}>الصف ${GN[x]}</option>`).join('')}</select><select id="hpL">${[1,2,3].map(x=>`<option value="${x}" ${x==l?'selected':''}>المستوى ${ar(x)} · ${LN[x]}</option>`).join('')}</select></div><div class="row" style="margin-top:8px"><button onclick="window.open(hpLinkNow(),'_blank')">فتح التدريب</button><button class="yellow" onclick="hpShare()">مشاركة عبر واتساب</button><button class="alt" onclick="hpCopy()">نسخ الرابط</button></div></div>`);
+};
+ 
+ /* ========== Start ========== */
 window.addEventListener('load',()=>{
  if(location.hash.startsWith('#parent=')){
   try{const d=b64d(location.hash.slice(8));$('loginGate').classList.add('hidden');renderParent(d);show('parent');}catch(e){}
