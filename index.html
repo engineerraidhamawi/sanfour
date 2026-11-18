@@ -183,7 +183,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 </section>
 
 <section id="result" class="hidden">
- <div class="card" style="text-align:center"><h2 id="resTitle">قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p></div>
+ <div class="card" style="text-align:center"><h2 id="resTitle">قراءة رائعة! 🌟</h2><p class="big" id="wcpm"></p><p>كلمة صحيحة في الدقيقة</p><p class="note">مؤشر للمتابعة التعليمية فقط، وليس تشخيصًا. الأهداف المبدئية تحتاج إلى تحقق من أخصائيين.</p></div>
  <div class="card"><div class="stats" id="rstats"></div><audio id="audio" controls class="hidden" style="width:100%;margin-top:14px"></audio></div>
  <div class="row"><button onclick="startQuestions()">إلى أسئلة الفهم</button></div>
 </section>
@@ -298,6 +298,8 @@ function chart(vals,max,color,target){
  return s+'</svg>';
 }
 function recommend(ss){
+ ss=ss.filter(r=>r.benchmarkEligible!==false);
+ if(!ss.length)return 'لا توجد جلسات صالحة للمقارنة (١٥ ثانية أو أكثر) بعد.';
  const last=ss[ss.length-1];
  if(!last.grade)return 'أكمل جلسات جديدة للحصول على توصية.';
  const same=ss.filter(r=>r.grade==last.grade&&r.level==last.level).slice(-3);
@@ -316,9 +318,10 @@ function openProfile(sid){
  if(!ss.length){$('prBody').innerHTML='<div class="card"><p class="note">لا توجد جلسات لهذا الطالب بعد.</p></div>';show('profile');return;}
  const lg=[...ss].reverse().find(r=>r.grade), target=lg?TARGETS[lg.grade][lg.level-1]:null;
  const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);
- const wc=ss.map(r=>r.wcpm), cp=ss.map(r=>r.comp), last=ss[ss.length-1];
- let html=`<div class="card">${lg?`<p class="note">المستوى الحالي: الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})</p>`:''}<div class="stats">${stat('عدد الجلسات',ar(ss.length))+stat('آخر سرعة',ar(last.wcpm))+stat('أفضل سرعة',ar(Math.max(...wc)))+stat('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+stat('متوسط الفهم',ar(avg(cp))+'٪')}</div></div>`;
- html+=`<div class="card"><h2>تطور سرعة القراءة (كلمة في الدقيقة)</h2>${chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target)}<p class="note">${target!=null?`الخط المتقطع = الهدف المبدئي (${ar(target)}). `:''}الجلسات من اليمين (الأقدم) إلى اليسار (الأحدث).</p></div>`;
+ const benchmarkSessions=ss.filter(r=>r.benchmarkEligible!==false);
+ const wc=benchmarkSessions.map(r=>r.wcpm), cp=ss.map(r=>r.comp), lastBenchmark=benchmarkSessions[benchmarkSessions.length-1];
+ let html=`<div class="card"><p class="note">${lg?`المستوى الحالي: الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})`:''} · أداة متابعة تعليمية وليست تشخيصًا.</p><div class="stats">${stat('عدد الجلسات',ar(ss.length))+stat('نتائج قابلة للمقارنة',ar(benchmarkSessions.length))+stat('آخر سرعة صالحة للمقارنة',lastBenchmark?ar(lastBenchmark.wcpm):'—')+stat('أفضل سرعة صالحة للمقارنة',wc.length?ar(Math.max(...wc)):'—')+stat('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+stat('متوسط الفهم',ar(avg(cp))+'٪')}</div></div>`;
+ html+=`<div class="card"><h2>تطور سرعة القراءة (كلمة في الدقيقة)</h2>${wc.length?chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target):'<p class="note">تظهر المقارنة بعد قراءة مدتها ١٥ ثانية أو أكثر.</p>'}<p class="note">${target!=null?`الخط المتقطع = الهدف المبدئي (${ar(target)}). `:''}الجلسات من اليمين (الأقدم) إلى اليسار (الأحدث). الجلسات الأقصر من ١٥ ثانية لا تدخل في المقارنة.</p></div>`;
  html+=`<div class="card"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪ (فهم جيد).</p></div>`;
  const sk={};ss.forEach(r=>Object.entries(r.skills||{}).forEach(([k,v])=>{sk[k]=sk[k]||[0,0];sk[k][0]+=v[0];sk[k][1]+=v[1];}));
  if(Object.keys(sk).length)html+=`<div class="card"><h2>الفهم حسب المهارة (كل الجلسات)</h2><table><tr><th>المهارة</th><th>الصحيح</th><th>النسبة</th></tr>${Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} من ${ar(v[1])}</td><td>${ar(Math.round(v[0]/v[1]*100))}٪</td></tr>`).join('')}</table></div>`;
@@ -449,13 +452,16 @@ function stopReading(timeUp){
 }
 function calcResult(){
  if(lastIdx<0){alert('اضغطي أولًا على آخر كلمة قرأها الطالب.');return;}
+ const benchmarkEligible=elapsed>=15;
+ if(!benchmarkEligible&&!confirm('انتهت المحاولة قبل ١٥ ثانية. ستُحفظ كتدريب تقديري، ولن تدخل في الرسوم أو توصيات المستوى. ألغِي لإعادة القراءة في جلسة جديدة. هل تريدين المتابعة؟'))return;
  const attempted=lastIdx+1, e=[...errs].filter(i=>i<=lastIdx).length, correct=attempted-e;
- R={wcpm:Math.round(correct/elapsed*60),acc:Math.round(correct/attempted*100),correct,errors:e,secs:Math.round(elapsed)};
+ R={wcpm:Math.round(correct/elapsed*60),acc:Math.round(correct/attempted*100),correct,errors:e,secs:Math.round(elapsed),benchmarkEligible};
  const target=TARGETS[P.grade][P.level-1], ok=R.wcpm>=target&&R.acc>=95;
- $('resTitle').textContent=R.acc<90?'أحسنت المحاولة! واصل التدريب 🌱':ok?'قراءة رائعة! 🌟':'عمل جيد! استمر 💪';
+ $('resTitle').textContent=!R.benchmarkEligible?'نتيجة تقديرية — متابعة فقط':R.acc<90?'أحسنت المحاولة! واصل التدريب 🌱':ok?'قراءة رائعة! 🌟':'عمل جيد! استمر 💪';
  $('wcpm').textContent=ar(R.wcpm);
+ $('wcpm').nextElementSibling.textContent=R.benchmarkEligible?'كلمة صحيحة في الدقيقة':'كلمة صحيحة في الدقيقة (تقديرية)';
  $('rstats').innerHTML=stat('الدقة',ar(R.acc)+'٪')+stat('كلمات صحيحة',ar(correct))+stat('أخطاء',ar(e))+stat('الزمن',ar(R.secs)+' ث')+stat('الهدف المبدئي',ar(target))
-  +(R.secs<15?'<p class="note" style="grid-column:1/-1;color:var(--c);font-weight:700">⚠️ القراءة كانت أقل من ١٥ ثانية، لذلك النتيجة تقديرية وغير دقيقة.</p>':'');
+  +(!R.benchmarkEligible?'<p class="note" style="grid-column:1/-1;color:var(--c);font-weight:700">⚠️ نتيجة تقديرية: القراءة أقل من ١٥ ثانية، ولن تدخل في الرسوم أو توصيات المستوى.</p>':'');
  if(audioURL){$('audio').src=audioURL;$('audio').classList.remove('hidden')}else{$('audio').classList.add('hidden')}
  show('result');
 }
@@ -473,18 +479,19 @@ function showSummary(){
  const qs=P.questions, right=qs.filter((q,i)=>answers[i]===q.answer).length, comp=Math.round(right/qs.length*100);
  const target=TARGETS[P.grade][P.level-1], sk={};
  qs.forEach((q,i)=>{sk[q.skill]=sk[q.skill]||[0,0];sk[q.skill][1]++;if(answers[i]===q.answer)sk[q.skill][0]++;});
- $('sstats').innerHTML=stat('كلمة في الدقيقة',ar(R.wcpm))+stat('الهدف المبدئي',ar(target))+stat('الدقة',ar(R.acc)+'٪')+stat('الفهم',ar(comp)+'٪');
+ $('sstats').innerHTML=stat(R.benchmarkEligible?'كلمة في الدقيقة':'كلمة في الدقيقة (تقديرية)',ar(R.wcpm))+stat('الهدف المبدئي',ar(target))+stat('الدقة',ar(R.acc)+'٪')+stat('الفهم',ar(comp)+'٪');
  $('skills').innerHTML='<table><tr><th>المهارة</th><th>النتيجة</th></tr>'+Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} من ${ar(v[1])}</td></tr>`).join('')+'</table>';
- const fluent=R.wcpm>=target&&R.acc>=95, understands=comp>=80;
+ const fluent=R.benchmarkEligible&&R.wcpm>=target&&R.acc>=95, understands=comp>=80;
  let reco;
- if(fluent&&understands)reco='قارئ متمكن في هذا المستوى ✅ إذا تكرر ذلك في ٣ جلسات متتالية يُقترح الصعود إلى المستوى التالي.';
+ if(!R.benchmarkEligible)reco='هذه محاولة قصيرة وتقديرية. لا تُستخدم نتيجتها لتوصية تغيير المستوى؛ أعيدي التقييم بقراءة مدتها ١٥ ثانية أو أكثر.';
+ else if(fluent&&understands)reco='قارئ متمكن في هذا المستوى ✅ إذا تكرر ذلك في ٣ جلسات متتالية يُقترح الصعود إلى المستوى التالي.';
  else if(fluent)reco='يقرأ بطلاقة جيدة، لكنه يحتاج دعمًا في الفهم والمفردات.';
  else if(understands)reco='يفهم النص جيدًا رغم بطء القراءة؛ التركيز على الطلاقة وتعرّف الكلمات.';
  else reco='يحتاج دعمًا في الطلاقة والفهم معًا. إذا تكرر ذلك في ٣ جلسات يُقترح مستوى أسهل.';
  if(R.acc<90)reco+=' (الدقة أقل من ٩٠٪)';
  $('reco').textContent=reco;
  const h=getHist();
- h.unshift({sid:curSid,name:studentName(curSid),ts:Date.now(),date:new Date().toLocaleDateString('ar'),title:P.title,grade:P.grade,level:P.level,wcpm:R.wcpm,acc:R.acc,comp,skills:sk});
+ h.unshift({sid:curSid,name:studentName(curSid),ts:Date.now(),date:new Date().toLocaleDateString('ar'),title:P.title,grade:P.grade,level:P.level,wcpm:R.wcpm,acc:R.acc,comp,skills:sk,benchmarkEligible:R.benchmarkEligible});
  saveHist(h);
  show('done');
 }
@@ -548,7 +555,7 @@ function lockNow(){sessionStorage.removeItem('sanfour_unlock');$('lockBtn').clas
 function needPin(fn){
  if(unlocked()){setUnlocked();fn();return;}
  pinNext=fn;$('pinIn').value='';$('pinErr').textContent='';
- if(!localStorage.getItem('sanfour_pin')){pinMode='new1';$('pinTitle').textContent='🔐 إنشاء رمز الدكتورة';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام لحماية صفحات الدكتورة.';}
+ if(!localStorage.getItem('sanfour_pin')){pinMode='new1';$('pinTitle').textContent='🔐 إنشاء رمز الدكتورة';$('pinNote').textContent='اختاري رمزًا من ٤ إلى ٦ أرقام لقفل صفحات الدكتورة على هذا الجهاز. هذا قفل محلي للتيسير فقط.';}
  else{pinMode='enter';$('pinTitle').textContent='🔒 صفحة الدكتورة';$('pinNote').textContent='أدخلي الرمز للمتابعة.';}
  $('pinBox').classList.remove('hidden');setTimeout(()=>$('pinIn').focus(),50);
 }
@@ -573,7 +580,7 @@ function gateMode(){
  $('lgTitle').textContent=first?'إنشاء حساب الدكتورة':'تسجيل الدخول';
  $('lgBtn').textContent=first?'إنشاء الحساب':'دخول';
  $('lgPin2').classList.toggle('hidden',!first);
- $('lgHint').textContent=first?'اختاري اسم مستخدم ورمزًا من ٤ إلى ٦ أرقام.':'';
+ $('lgHint').textContent=(first?'اختاري اسم مستخدم ورمزًا من ٤ إلى ٦ أرقام. ':'')+'رمز الدخول المحلي قفل للتيسير فقط، وليس حماية لبيانات الجهاز.';
 }
 function loginOK(){
  const u=$('lgUser').value.trim(),p=$('lgPin').value.trim(),users=getUsers();
@@ -592,7 +599,7 @@ function loginOK(){
  sessionStorage.setItem('sanfour_user',user.u);
  enterApp();
 }
-function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classList.remove('hidden');fixRoles();goHome();}
+function enterApp(){$('loginGate').classList.add('hidden');$('logoutBtn').classList.remove('hidden');fixRoles();goHome();if(cToken)flushParentRevokes();}
 function logout(){sessionStorage.clear();['lgUser','lgPin','lgPin2'].forEach(i=>$(i).value='');gateMode();$('logoutBtn').classList.add('hidden');$('lockBtn').classList.add('hidden');$('loginGate').classList.remove('hidden');}
 function gateForgot(){if(confirm('إعادة التعيين تمسح الحساب وكل بيانات التطبيق على هذا الجهاز (الطلاب والنتائج والنصوص). هل أنتِ متأكدة؟')){Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));sessionStorage.clear();location.reload();}}
 document.addEventListener('keydown',e=>{
@@ -641,7 +648,7 @@ function delUser(i){
 /* ========== Backup & restore ========== */
 function exportData(){
  const d={app:'sanfour',v:1,date:new Date().toISOString(),data:{}};
- Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>d.data[k]=localStorage.getItem(k));
+ Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')&&!['sanfour_users','sanfour_pin'].includes(k)).forEach(k=>d.data[k]=localStorage.getItem(k));
  const a=document.createElement('a');
  a.href=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'}));
  a.download='sanfour-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -656,9 +663,9 @@ function importData(f){
    if(d.app!=='sanfour'||!d.data)throw 0;
    if(!confirm('ستُستبدل كل البيانات الحالية على هذا الجهاز بالنسخة الاحتياطية. هل تريدين المتابعة؟'))return;
    Object.keys(localStorage).filter(k=>k.startsWith('sanfour_')).forEach(k=>localStorage.removeItem(k));
-   Object.entries(d.data).forEach(([k,v])=>localStorage.setItem(k,v));
+   Object.entries(d.data).filter(([k,v])=>k.startsWith('sanfour_')&&!['sanfour_users','sanfour_pin'].includes(k)&&typeof v==='string').forEach(([k,v])=>localStorage.setItem(k,v));
    sessionStorage.clear();
-   alert('تمت الاستعادة ✅ سجّلي الدخول بحساب النسخة الاحتياطية.');
+   alert('تمت الاستعادة ✅ أنشئي حساب دخول محليًا جديدًا؛ رموز الدخول لا تُضمَّن في النسخ الاحتياطية.');
    location.reload();
   }catch(e){alert('الملف غير صالح.');}
  };
@@ -666,28 +673,84 @@ function importData(f){
 }
 
 /* ========== Parent weekly report ========== */
+const PARENT_LINKS_KEY='sfp_parent_links';
+const PARENT_REVOKE_QUEUE_KEY='sfp_parent_revoke_queue';
 const b64e=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const b64d=s=>JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))));
+function parentLinks(){try{return JSON.parse(sessionStorage.getItem(PARENT_LINKS_KEY)||'{}');}catch(e){return {};}}
+function parentShareToken(sid){return parentLinks()[sid]||null;}
 function parentData(sid){
  const st=getStudents().find(x=>x.id==sid)||{name:'—'}, now=Date.now(), wk=7*864e5;
  const all=getHist().filter(r=>r.sid==sid).reverse();
  const week=all.filter(r=>r.ts&&now-r.ts<=wk), use=week.length?week:all.slice(-5);
- return {n:st.name.split(' ')[0],f:new Date(now-wk).toLocaleDateString('ar'),t:new Date(now).toLocaleDateString('ar'),s:use.length,w:use.map(r=>r.wcpm),c:use.map(r=>r.comp),wk:week.length>0};
+ const measured=use.filter(r=>r.benchmarkEligible!==false);
+ return {n:st.name.split(' ')[0],f:new Date(now-wk).toLocaleDateString('ar'),t:new Date(now).toLocaleDateString('ar'),s:use.length,w:measured.map(r=>r.wcpm),c:use.map(r=>r.comp),wk:week.length>0};
 }
-function parentLink(sid){return location.origin+location.pathname+'#parent='+b64e(parentData(sid));}
-function shareParent(){const url=parentLink(profSid);window.open('https://wa.me/?text='+encodeURIComponent('تقرير القراءة الأسبوعي من سنفور 🌟\n'+url),'_blank');}
-function copyParent(){const url=parentLink(profSid);if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',url));else prompt('انسخي الرابط:',url);}
+function parentLink(sid){const share=parentShareToken(sid);return share&&share.expiresAt>Date.now()?location.origin+location.pathname+'#parent='+share.token:'';}
+async function parentApi(body){
+ const r=await fetch('/api/parent',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ let j={};try{j=await r.json();}catch(e){throw new Error('خدمة الروابط الآمنة غير متاحة على هذا الرابط.');}
+ if(!r.ok)throw new Error(j.error||'تعذّر إتمام الطلب.');return j;
+}
+function pendingParentRevokes(){try{return JSON.parse(localStorage.getItem(PARENT_REVOKE_QUEUE_KEY)||'[]');}catch(e){return [];}}
+function queueParentRevoke(id){const ids=pendingParentRevokes();if(id&&!ids.includes(id)){ids.push(id);localStorage.setItem(PARENT_REVOKE_QUEUE_KEY,JSON.stringify(ids));}}
+async function flushParentRevokes(){
+ if(!cToken)return;
+ for(const id of pendingParentRevokes()){
+  try{await parentApi({action:'revoke',token:cToken,shareId:id});const remaining=pendingParentRevokes().filter(x=>x!==id);localStorage.setItem(PARENT_REVOKE_QUEUE_KEY,JSON.stringify(remaining));}
+  catch(e){return;}
+ }
+}
+function updateParentShareCard(){
+ const token=parentShareToken(profSid),active=token&&token.expiresAt>Date.now(),create=$('parentCreate'),copy=$('parentCopy'),share=$('parentShare'),revoke=$('parentRevoke'),status=$('parentShareStatus');
+ if(!create)return;
+ const consent=$('parentShareConsent');create.disabled=!cToken||!consent.checked;
+ copy.disabled=share.disabled=!active||!token.token;
+ revoke.disabled=!active||!token.shareId||!cToken;
+ status.textContent=active?token.token?`يوجد رابط نشط حتى ${new Date(token.expiresAt).toLocaleString('ar')}، ويمكن إلغاؤه في أي وقت.`:`يوجد رابط نشط حتى ${new Date(token.expiresAt).toLocaleString('ar')} على جهاز آخر. يمكنك إلغاؤه أو إنشاء رابط جديد.`:token?'انتهت صلاحية الرابط المحفوظ؛ أنشئي رابطًا جديدًا بعد مراجعة الملخص.':cToken?'راجعي الملخص أعلاه ووافقي قبل إنشاء الرابط.':'سجّلي الدخول إلى السحابة من صفحة الإدارة لإنشاء رابط آمن.';
+}
+async function refreshParentShares(){
+ if(!cToken)return;
+ try{
+  const result=await parentApi({action:'list',token:cToken}),match=(result.shares||[]).filter(x=>x.studentId===profSid).sort((a,b)=>b.expiresAt-a.expiresAt)[0],links=parentLinks();
+  if(match){const previous=links[profSid];links[profSid]={shareId:match.id,expiresAt:match.expiresAt,...(previous&&previous.shareId===match.id&&previous.token?{token:previous.token}:{})};}
+  else delete links[profSid];
+  sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));updateParentShareCard();
+ }catch(e){const status=$('parentShareStatus');if(status)status.textContent=e.message;}
+}
+async function createParentLink(){
+ if(!cToken)return alert('سجّلي الدخول إلى السحابة أولًا.');
+ if(!$('parentShareConsent').checked)return alert('راجعي محتوى الملخص ووافقي قبل إنشاء الرابط.');
+ const button=$('parentCreate');button.disabled=true;
+ try{
+  const created=await parentApi({action:'create',token:cToken,studentId:profSid,data:parentData(profSid)});
+  const links=parentLinks();links[profSid]={shareId:created.id,token:created.token,expiresAt:created.expiresAt};sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));
+  $('parentShareConsent').checked=false;updateParentShareCard();
+ }catch(e){$('parentShareStatus').textContent=e.message;button.disabled=false;}
+}
+function shareParent(){const url=parentLink(profSid);if(url)window.open('https://wa.me/?text='+encodeURIComponent('تقرير القراءة الأسبوعي من سنفور 🌟\n'+url),'_blank');}
+function copyParent(){const url=parentLink(profSid);if(!url)return;if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('تم نسخ الرابط ✅')).catch(()=>prompt('انسخي الرابط:',url));else prompt('انسخي الرابط:',url);}
+async function revokeParentLink(){
+ const current=parentShareToken(profSid);if(!current||!current.shareId)return;
+ if(!confirm('سيُلغى الرابط فورًا ولن يستطيع ولي الأمر فتحه بعد ذلك. متابعة؟'))return;
+ try{await parentApi({action:'revoke',token:cToken,shareId:current.shareId});const links=parentLinks();delete links[profSid];sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));updateParentShareCard();}
+ catch(e){$('parentShareStatus').textContent=e.message;}
+}
 function addParentCard(){
  if(!profSid||$('parentCard'))return;
- $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="parentCard"><h2>👪 تقرير ولي الأمر الأسبوعي</h2><p class="note">رابط بسيط يرى فيه ولي الأمر ملخص الأسبوع فقط، دون تفاصيل الأخطاء.</p><div class="row"><button onclick="window.open(parentLink(profSid),'_blank')">عرض التقرير</button><button class="yellow" onclick="shareParent()">مشاركة عبر واتساب</button><button class="alt" onclick="copyParent()">نسخ الرابط</button></div></div>`);
+ const d=parentData(profSid),avg=d.c.length?Math.round(d.c.reduce((a,b)=>a+b,0)/d.c.length):0;
+ const speeds=d.w.length?`سرعات القراءة الصالحة للمقارنة: ${d.w.map(ar).join('، ')}`:'لا توجد قراءات صالحة للمقارنة بعد.',period=d.wk?`من ${d.f} إلى ${d.t}`:'آخر الجلسات';
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="parentCard"><h2>👪 تقرير ولي الأمر الأسبوعي</h2><p class="note">قبل الإنشاء، راجعي الملخص الذي سيظهر. سيُرسل إلى سحابة العيادة ويُحفظ حتى انتهاء الرابط بعد ٧ أيام أو إلغائه. أي شخص يملك الرابط يستطيع فتحه.</p><p style="font-size:18px">الفترة: <b>${period}</b> · الاسم الأول: <b>${esc(d.n)}</b> · الجلسات: <b>${ar(d.s)}</b> · قراءات صالحة للمقارنة: <b>${ar(d.w.length)}</b> · متوسط الفهم: <b>${ar(avg)}٪</b></p><p class="note">${speeds} سيتضمن التقرير السرعات ومتوسط الفهم، دون تفاصيل الأخطاء أو بيانات الاتصال.</p><label style="display:flex;gap:10px;align-items:center;font-weight:400"><input type="checkbox" id="parentShareConsent" style="width:24px;height:24px;max-width:24px;flex:none" onchange="updateParentShareCard()">أوافق على إرسال هذا الملخص إلى سحابة العيادة وإنشاء رابط لمشاركته مع ولي الأمر.</label><p class="note" id="parentShareStatus"></p><div class="row"><button id="parentCreate" onclick="createParentLink()">إنشاء رابط ٧ أيام</button><button id="parentShare" class="yellow" onclick="shareParent()">مشاركة عبر واتساب</button><button id="parentCopy" class="alt" onclick="copyParent()">نسخ الرابط</button><button id="parentRevoke" class="alt small" onclick="revokeParentLink()">إلغاء الرابط</button></div></div>`);
+ updateParentShareCard();
+ refreshParentShares();
 }
 function renderParent(d){
  const last=d.w.length?d.w[d.w.length-1]:0, first=d.w[0]||0, avgC=d.c.length?Math.round(d.c.reduce((a,b)=>a+b,0)/d.c.length):0;
  const stars='⭐'.repeat(Math.min(5,Math.max(1,d.s)));
  const trend=d.w.length<2?'نحتاج جلسات أكثر لرؤية التطور.':last>first?'سرعة القراءة تتحسن هذا الأسبوع 📈':last==first?'سرعة القراءة ثابتة، والتدريب اليومي يصنع الفرق.':'كان أسبوعًا صعبًا قليلًا، والتشجيع في البيت يساعد كثيرًا 💛';
- $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${d.f} إلى ${d.t}`:'آخر الجلسات'}</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
- +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('كلمة في الدقيقة (آخر جلسة)',ar(last))+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div><div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
- +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة فقط، وليس تشخيصًا. للاستفسار تواصلوا مع الدكتورة.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
+ $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${esc(d.f)} إلى ${esc(d.t)}`:'آخر الجلسات'}</p><p class="note">رابط خاص صالح لمدة ٧ أيام</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
+ +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('قراءات صالحة للمقارنة',ar(d.w.length))+stat('آخر سرعة صالحة للمقارنة',d.w.length?ar(last):'—')+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div>${d.w.length?`<div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لم تتوفر بعد قراءة مدتها ١٥ ثانية أو أكثر للمقارنة.</p></div>'}`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
+ +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة التعليمية فقط، وليس تشخيصًا. للاستفسار تواصلوا مع العيادة التي تستخدم سنفور.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
 }
 
 /* ========== Parent consent ========== */
@@ -697,7 +760,7 @@ document.body.insertAdjacentHTML('beforeend',`<div id="consentBox" class="hidden
 <div class="note" style="line-height:1.9">
 • سيُسجَّل صوت الطالب أثناء القراءة لمساعدة الدكتورة على تقييم الطلاقة.<br>
 • عند استخدام «التحليل بالذكاء الاصطناعي» فقط، يُرسل التسجيل إلى خدمة خارجية لتحويل الصوت إلى نص، وفق شروط تلك الخدمة.<br>
-• لا يُحفظ التسجيل الصوتي داخل التطبيق بعد انتهاء الجلسة، والنتائج تُحفظ على هذا الجهاز فقط.<br>
+• لا يُحفظ التسجيل الصوتي داخل التطبيق بعد انتهاء الجلسة. تُحفظ النتائج على الجهاز، وإذا فُعّلت المزامنة تُرفع إلى مساحة العيادة ويصل إليها أعضاؤها.<br>
 • النتائج للمتابعة التربوية فقط، وليست تشخيصًا.<br>
 • يمكن سحب الموافقة في أي وقت من ملف الطالب.</div><p style="margin:8px 0"><a href="privacy.html#parents" target="_blank" style="color:var(--t);font-weight:700">📄 اقرأ سياسة الخصوصية كاملة</a></p>
 <label>اسم ولي الأمر</label><input id="cnName" class="full">
@@ -753,7 +816,7 @@ function resetConsent(){
 /* ========== Cloud sync + clinics (Vercel) ========== */
 let cToken=localStorage.getItem('sfc_token')||'',cEmail=localStorage.getItem('sfc_email')||'',cRole=localStorage.getItem('sfc_role')||'',cClinic=localStorage.getItem('sfc_clinic')||'',syncT=null,syncing=false,applying=false;
 const _lsSet=Storage.prototype.setItem,_lsRem=Storage.prototype.removeItem;
-const CLOUD_SKIP=['sanfour_cloud_ts','sanfour_dirty'];
+const CLOUD_SKIP=['sanfour_cloud_ts','sanfour_dirty','sanfour_users','sanfour_pin'];
 const watched=k=>String(k).startsWith('sanfour_')&&!CLOUD_SKIP.includes(k);
 Storage.prototype.setItem=function(k,v){_lsSet.call(this,k,v);if(this===localStorage&&!applying&&watched(k)){_lsSet.call(localStorage,'sanfour_dirty','1');schedulePush();}};
 Storage.prototype.removeItem=function(k){_lsRem.call(this,k);if(this===localStorage&&!applying&&watched(k)){_lsSet.call(localStorage,'sanfour_dirty','1');schedulePush();}};
@@ -765,7 +828,7 @@ async function capi(body){
  if(!r.ok)throw new Error(j.error||'خطأ غير معروف');return j;
 }
 function localSnapshot(){const d={};Object.keys(localStorage).filter(watched).forEach(k=>d[k]=localStorage.getItem(k));return d;}
-function applySnapshot(d){applying=true;Object.keys(localStorage).filter(watched).forEach(k=>localStorage.removeItem(k));Object.entries(d||{}).forEach(([k,v])=>localStorage.setItem(k,v));applying=false;}
+function applySnapshot(d){applying=true;Object.keys(localStorage).filter(watched).forEach(k=>localStorage.removeItem(k));Object.entries(d||{}).filter(([k,v])=>watched(k)&&typeof v==='string').forEach(([k,v])=>localStorage.setItem(k,v));applying=false;}
 function mergeArr(a,b,key){const m=new Map();(b||[]).forEach(x=>m.set(key(x),x));(a||[]).forEach(x=>m.set(key(x),x));return [...m.values()];}
 function mergeSnap(loc,rem){
  const out=Object.assign({},rem,loc),J=(o,k)=>{try{return JSON.parse(o[k]||'[]');}catch(e){return [];}},JO=(o,k)=>{try{return JSON.parse(o[k]||'{}');}catch(e){return {};}};
@@ -773,12 +836,12 @@ function mergeSnap(loc,rem){
  out.sanfour_students=JSON.stringify(mergeArr(J(loc,'sanfour_students'),J(rem,'sanfour_students'),x=>x.id).filter(x=>!T.s.includes(x.id)));
  out.sanfour_h=JSON.stringify(mergeArr(J(loc,'sanfour_h'),J(rem,'sanfour_h'),x=>x.sid+'|'+(x.ts||(x.date+'|'+x.wcpm+'|'+x.acc+'|'+x.comp))+'|'+x.title).filter(x=>!T.s.includes(x.sid)).sort((a,b)=>(b.ts||0)-(a.ts||0)));
  out.sanfour_custom=JSON.stringify(mergeArr(J(loc,'sanfour_custom'),J(rem,'sanfour_custom'),x=>x.id).filter(x=>!T.p.includes(x.id)));
- out.sanfour_users=JSON.stringify(mergeArr(J(loc,'sanfour_users'),J(rem,'sanfour_users'),x=>x.u).filter(x=>!T.u.includes(x.u)));
+ delete out.sanfour_users;delete out.sanfour_pin;
  out.sanfour_tomb=JSON.stringify(T);
  return out;
 }
 function tombAdd(t,id){const o=JSON.parse(localStorage.getItem('sanfour_tomb')||'{}');o[t]=o[t]||[];if(!o[t].includes(id))o[t].push(id);localStorage.setItem('sanfour_tomb',JSON.stringify(o));}
-const _ds=deleteStudent;window.deleteStudent=function(){const id=profSid,n=getStudents().length;_ds();if(getStudents().length<n)tombAdd('s',id);};
+const _ds=deleteStudent;window.deleteStudent=function(){const id=profSid,n=getStudents().length;_ds();if(getStudents().length<n){tombAdd('s',id);const links=parentLinks(),share=links[id];delete links[id];sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));if(share&&share.shareId){queueParentRevoke(share.shareId);flushParentRevokes();}}};
 const _dp=delPassage;window.delPassage=function(id){const n=getCustom().length;_dp(id);if(getCustom().length<n)tombAdd('p',id);};
 const _du=delUser;window.delUser=function(i){const nm=(getUsers()[i]||{}).u,n=getUsers().length;_du(i);if(getUsers().length<n&&nm)tombAdd('u',nm);};
 function setCloudInfo(j){if(j.role){cRole=j.role;_lsSet.call(localStorage,'sfc_role',cRole);}if(j.clinic){cClinic=j.clinic.name||'';_lsSet.call(localStorage,'sfc_clinic',cClinic);}}
@@ -802,7 +865,7 @@ async function cloudAuth(signup){
  try{
   const j=await capi({action:signup?'signup':'login',email:e,password:p,code:c});
   cToken=j.token;cEmail=j.email;_lsSet.call(localStorage,'sfc_token',cToken);_lsSet.call(localStorage,'sfc_email',cEmail);setCloudInfo(j);
-  renderCloud();await cloudPull(false);
+  renderCloud();await flushParentRevokes();await cloudPull(false);
  }catch(err){setCloudMsg(err.message);}
 }
 async function cloudPush(manual,retry){
@@ -828,7 +891,8 @@ async function cloudPull(auto){
   const j=await capi({action:'pull',token:cToken});setCloudInfo(j);
   if(!j.data){await cloudPush(false);renderCloud();return;}
   const remoteTs=+j.updated_at,localTs=+(localStorage.getItem('sanfour_cloud_ts')||0),dirty=localStorage.getItem('sanfour_dirty');
-  if(remoteTs<=localTs){if(dirty)await cloudPush(false);renderCloud();return;}
+  const remoteHasSecrets=Object.keys(j.data||{}).some(k=>CLOUD_SKIP.includes(k));
+  if(remoteTs<=localTs){if(dirty||remoteHasSecrets){_lsSet.call(localStorage,'sanfour_dirty','1');await cloudPush(false);}renderCloud();return;}
   if(dirty&&localStorage.getItem('sanfour_users')){
    applySnapshot(mergeSnap(localSnapshot(),j.data));
    _lsSet.call(localStorage,'sanfour_cloud_ts',String(remoteTs));
@@ -838,6 +902,7 @@ async function cloudPull(auto){
   }
   applySnapshot(j.data);
   _lsSet.call(localStorage,'sanfour_cloud_ts',String(remoteTs));_lsRem.call(localStorage,'sanfour_dirty');
+  if(remoteHasSecrets){_lsSet.call(localStorage,'sanfour_dirty','1');await cloudPush(false);}
   if(!auto){sessionStorage.clear();alert('تم تنزيل بيانات العيادة ✅ سجّلي الدخول بحسابك في التطبيق.');}
   location.reload();
  }catch(e){if(/الجلسة|أُزيل/.test(e.message))cloudForget();setCloudMsg('خطأ: '+e.message);}
@@ -859,7 +924,7 @@ function clinicInvite(){const e=$('invEmail').value.trim();if(!e)return;clinicAc
 function clinicRemove(e){if(confirm('إزالة '+e+' من العيادة؟ ستتوقف مزامنتها مع بيانات العيادة.'))clinicAct({action:'remove',email:e},'تمت الإزالة ✅');}
 function clinicRole(e,r){clinicAct({action:'setrole',email:e,role:r},'تم تغيير الدور ✅');}
 async function clinicRename(){const n=$('clName').value.trim();if(!n)return;await clinicAct({action:'rename',name:n},'تم حفظ الاسم ✅');cClinic=n;_lsSet.call(localStorage,'sfc_clinic',n);renderCloud();}
-if(cToken)cloudPull(true);
+if(cToken){cloudPull(true);flushParentRevokes();}
  /* ========== Error types & disfluency ========== */
 const ETYPES=['حركة (تشكيل)','حرف متشابه','همزة / تاء مربوطة','حرف مدّ','لام شمسية / قمرية','استبدال كلمة','حذف كلمة','قلب حروف','سابقة / لاحقة','غير مصنّف'];
 const DTYPES=['تكرار','إطالة صوت','انحباس / توقف طويل'];
@@ -927,7 +992,7 @@ function buildReport(sid,notes){
  const ss=getHist().filter(r=>r.sid==sid).reverse();if(!ss.length)return null;
  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
  const lg=[...ss].reverse().find(r=>r.grade),target=lg?TARGETS[lg.grade][lg.level-1]:null;
- const wc=ss.map(r=>r.wcpm),cp=ss.map(r=>r.comp),last=ss[ss.length-1];
+ const benchmarkSessions=ss.filter(r=>r.benchmarkEligible!==false),wc=benchmarkSessions.map(r=>r.wcpm),cp=ss.map(r=>r.comp),last=ss[ss.length-1],lastBenchmark=benchmarkSessions[benchmarkSessions.length-1];
  const sk={},et={},dt={};let dsess=0;
  ss.forEach(r=>{
   Object.entries(r.skills||{}).forEach(([k,v])=>{sk[k]=sk[k]||[0,0];sk[k][0]+=v[0];sk[k][1]+=v[1];});
@@ -954,12 +1019,12 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px
 </style></head><body>
 <div class="hd"><img src="${logo}" onerror="this.style.display='none'"><div><h1>سنفور — تقرير الطالب</h1><p>تاريخ التقرير: ${new Date().toLocaleDateString('ar')} · إعداد: ${esc(meName()||'')}</p></div></div>
 <div class="box"><b style="font-size:20px">👤 ${esc(st.name)}</b>${lg?` &nbsp;·&nbsp; الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})`:''}<p class="note">موافقة التسجيل الصوتي: ${c?(c.v=='yes'?'✅ موافق — '+esc(c.name)+' ('+c.date+')':'🚫 بدون تسجيل صوتي'):'لم تُحدَّد'}</p></div>
-<h2>ملخص الأداء</h2><div class="grid">${S('عدد الجلسات',ar(ss.length))+S('آخر سرعة (كلمة/دقيقة)',ar(last.wcpm))+S('الهدف المبدئي',target!=null?ar(target):'—')+S('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+S('متوسط الفهم',ar(avg(cp))+'٪')}</div>
-<div class="two"><div class="box"><h2>تطور سرعة القراءة</h2>${chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target)}<p class="note">الأقدم على اليمين، والأحدث على اليسار. الخط المتقطع = الهدف.</p></div><div class="box"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪.</p></div></div>
+<h2>ملخص الأداء</h2><div class="grid">${S('عدد الجلسات',ar(ss.length))+S('آخر سرعة صالحة للمقارنة',lastBenchmark?ar(lastBenchmark.wcpm):'—')+S('نتائج قابلة للمقارنة',ar(benchmarkSessions.length))+S('الهدف المبدئي',target!=null?ar(target):'—')+S('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+S('متوسط الفهم',ar(avg(cp))+'٪')}</div><p class="note">أداة متابعة تعليمية وليست تشخيصًا. الجلسات الأقصر من ١٥ ثانية مستبعدة من مقارنة السرعة والتوصية.</p>
+<div class="two"><div class="box"><h2>تطور سرعة القراءة</h2>${wc.length?chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target):'<p class="note">لا توجد قراءات مدتها ١٥ ثانية أو أكثر.</p>'}<p class="note">الأقدم على اليمين، والأحدث على اليسار. الخط المتقطع = الهدف.</p></div><div class="box"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪.</p></div></div>
 <div class="two"><div class="box"><h2>الفهم حسب المهارة</h2>${Object.keys(sk).length?`<table><tr><th>المهارة</th><th>الصحيح</th><th>النسبة</th></tr>${Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} / ${ar(v[1])}</td><td>${ar(Math.round(v[0]/v[1]*100))}٪</td></tr>`).join('')}</table>`:'<p class="note">لا توجد بيانات.</p>'}</div>
 <div class="box"><h2>أنواع الأخطاء</h2>${Object.keys(et).length?`<table><tr><th>النوع</th><th>العدد</th></tr>${etRows(et)}</table>`:'<p class="note">لا توجد أخطاء مصنّفة.</p>'}${Object.keys(dt).length?`<h2>علامات التأتأة (للرصد)</h2><table><tr><th>العلامة</th><th>العدد</th></tr>${etRows(dt)}</table><p class="note">رُصدت في ${ar(dsess)} جلسة.</p>`:''}${dsess>=3?'<p class="warn">⚠️ يُقترح استشارة أخصائي النطق واللغة.</p>':''}</div></div>
 <h2>التوصية</h2><div class="box"><p style="font-size:16px;margin:0">${recommend(ss)}</p>${top.length?'<p style="margin:8px 0 0"><b>أنشطة مقترحة:</b></p>'+top.map(([k])=>`<p style="margin:4px 0">• <b>${k}:</b> ${ETIPS[k]}</p>`).join(''):''}</div>
-<h2>آخر الجلسات</h2><table><tr><th>التاريخ</th><th>النص</th><th>المستوى</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>${ss.slice(-10).reverse().map(r=>`<tr><td>${r.date}</td><td>${esc(r.title)}</td><td>${r.grade?GN[r.grade]+' · '+ar(r.level):'—'}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')}</table>
+<h2>آخر الجلسات</h2><table><tr><th>التاريخ</th><th>النص</th><th>المستوى</th><th>كلمة/دقيقة</th><th>الحالة</th><th>الدقة</th><th>الفهم</th></tr>${ss.slice(-10).reverse().map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.title)}</td><td>${r.grade?GN[r.grade]+' · '+ar(r.level):'—'}</td><td>${ar(r.wcpm)}</td><td>${r.benchmarkEligible===false?'تقديرية · قصيرة':'صالحة للمقارنة'}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).join('')}</table>
 <h2>ملاحظات الدكتورة</h2><div class="box">${notes?`<p style="font-size:15px;white-space:pre-wrap;margin:0">${esc(notes)}</p>`:'<div class="lines"><div></div><div></div><div></div></div>'}</div>
 <div class="sig"><span>التوقيع: ____________________</span><span>التاريخ: ____________</span></div>
 <p class="note" style="margin-top:16px">هذا التقرير للمتابعة التربوية فقط، وليس تشخيصًا طبيًّا. الأهداف المبدئية لسرعة القراءة تحتاج إلى تحقق من أخصائيين.</p>
@@ -1212,9 +1277,11 @@ window.addParentCard=function(){
 };
  
  /* ========== Start ========== */
-window.addEventListener('load',()=>{
+window.addEventListener('load',async()=>{
  if(location.hash.startsWith('#parent=')){
-  try{const d=b64d(location.hash.slice(8));$('loginGate').classList.add('hidden');renderParent(d);show('parent');}catch(e){}
+  $('loginGate').classList.add('hidden');show('parent');$('parentBody').innerHTML='<div class="card"><p class="note">جارٍ تحميل التقرير…</p></div>';
+  try{const result=await parentApi({action:'get',shareToken:location.hash.slice(8)});renderParent(result.data);}
+  catch(e){$('parentBody').innerHTML=`<div class="card"><h2>تعذّر فتح التقرير</h2><p class="note">${esc(e.message)} اطلبوا رابطًا جديدًا من العيادة.</p></div>`;}
   return;
  }
  migrate();gateMode();

@@ -16,6 +16,7 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 - Microphone recording of the reading (only with parental consent)
 - Doctor scoring: tap the last word read and each misread word
 - **WCPM** = (words read − errors) ÷ seconds × 60, plus accuracy %
+- Attempts shorter than 15 seconds are saved as practice estimates and excluded from speed charts and level recommendations.
 - Encouraging, honest result headlines, and a warning for readings under 15 seconds
 
 ### 🤖 AI transcription assistant
@@ -34,14 +35,14 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 ### Doctor tools
 - **Add custom passages** with 4–6 skill-tagged questions
 - **Student profiles:** WCPM and comprehension charts (right-to-left), per-skill totals, session history, and a level recommendation based on the last 3 sessions at the same level
-- **Parent weekly report:** a shareable link (WhatsApp / copy) containing only a summary snapshot, viewable without login
+- **Parent weekly report:** a preview-first, revocable link (WhatsApp / copy) containing only a summary snapshot; expires after 7 days
 
 ### Security & admin
 - Login screen (username + 4–6 digit PIN); the first account is the admin
 - Admin: add or remove users, change roles (admin / doctor-teacher), reset PINs
 - PIN lock on doctor pages (auto-unlocks for 10 minutes)
 - Per-student **parental consent** for audio recording (saved, shown in the profile, can be withdrawn)
-- **Backup & restore:** export and import all data as JSON
+- **Backup & restore:** export and import student and session data as JSON; local login PINs are excluded, so create a new local login after restoring
 
 ---
 
@@ -52,6 +53,8 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 | `index.html` | The whole front-end app (HTML + CSS + JS, no build step) |
 | `passages.js` | The 18 built-in passages (`PASSAGES.push(...)`) |
 | `api/transcribe.js` | Vercel serverless function that proxies audio to Groq Whisper |
+| `api/parent.js` | Creates, reads, and revokes seven-day parent report links |
+| `api/cloud.js` | Clinic sync and membership API; filters local PIN records on both read and write |
 | `C8qBMDOA.md` | Product blueprint (Arabic) |
 | `1_6.md` | Source text of the leveled passages |
 | `*design-pack*.pdf`, `*.jpg` | UI designs, logo and the Roo mascot |
@@ -63,25 +66,27 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 - GitHub Pages also serves the front-end, but without AI and with separate data. Use the Vercel link.
 
 ## Data storage (current)
-All data lives in the browser's **localStorage**, per device and per domain:
+Student and session data live in browser **localStorage**, per device and per domain. If clinic sync is enabled, those records are also stored in the clinic's cloud account:
 
 | Key | Contents |
 |---|---|
-| `sanfour_users` | Users `{u, pin, role}` |
+| `sanfour_users` | Local convenience accounts `{u, pin, role}`; never included in clinic sync or backups |
 | `sanfour_students` | Students `{id, name, consent}` |
 | `sanfour_h` | Session history `{sid, ts, date, title, grade, level, wcpm, acc, comp, skills}` |
 | `sanfour_custom` | Doctor-authored passages |
-| `sanfour_pin`, `sanfour_cur`, `sanfour_timed` | Session settings |
+| `sanfour_pin` | Local doctor-page convenience lock; never included in clinic sync or backups |
+| `sanfour_cur`, `sanfour_timed` | Session settings |
 
 ## Known limitations
-- No server database: data doesn't sync across devices, and clearing the browser deletes it (use Backup).
-- PINs are stored unencrypted on the device. This is a convenience lock, not real security.
+- Clearing browser storage deletes local data (use Backup). Clinic sync stores student and session data until the clinic deletes it.
+- Local PINs are stored unencrypted on the device. They are convenience locks, not real security; protect shared devices with their operating-system account lock.
+- JSON backups contain student names, consent records, and session results. Store them securely and delete old copies when they are no longer needed.
 - The Groq free tier has rate limits.
 - WCPM targets are **provisional** and need validation by Arabic reading specialists.
 - The AI marks are suggestions; disfluency (stuttering) detection is not reliable yet.
 
 ## Roadmap (next for a developer)
-1. **Real backend + auth** (e.g. Supabase/Firebase): synced data, per-doctor students, hashed credentials, encryption
+1. **Stronger access controls**: clinician access is still gated locally in the app; use clinic identity and server-enforced roles for student records, then add per-doctor scopes and a retention workflow
 2. **Improved disfluency detection:** a specialized model for repetitions, prolongations and blocks
 3. **Error-type analysis** for Arabic: diacritics, similar letters, hamza/ة, long vowels, sun/moon لام
 4. **Specialist validation** of passages, tashkeel, questions and benchmarks
@@ -90,4 +95,6 @@ All data lives in the browser's **localStorage**, per device and per domain:
 ## Privacy
 - Parental consent is required before recording.
 - Audio is sent to the speech provider only when the AI button is used, and is not stored in the app after the session.
-- The parent report link contains only a summary snapshot.
+- Parent report links contain only a previewed summary, expire after 7 days, and can be revoked by the clinic.
+- Parent report links created before the expiring-link update no longer open.
+- Clinic sync removes local user PIN records from existing cloud snapshots on the next authorized pull; server-side filtering also prevents older app versions from uploading them again.
