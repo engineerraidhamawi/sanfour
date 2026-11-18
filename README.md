@@ -31,6 +31,9 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 ### Comprehension
 - Questions after each passage (multiple choice / true-false), tagged by skill: حرفي، استنتاجي، مفردات، ترتيب الأحداث، الفكرة الرئيسة، نقدي
 - A per-skill breakdown, plus a fluency × comprehension interpretation
+- **Specialist-scored comprehension assessment:** a grade-specific rubric for the 12 skills in five domains, with editable score descriptions, enabled skills, and 1–5 weights; defaults to a 0–2 scale and equal weights
+- Unassessed skills are excluded from the weighted calculation; the app shows the arithmetic result without pass bands, diagnoses, or automatic placement decisions
+- Each saved assessment keeps a snapshot of its rubric version so later specialist changes do not rewrite historical scores
 
 ### Doctor tools
 - **Add custom passages** with 4–6 skill-tagged questions
@@ -57,7 +60,7 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 | `api/cloud.js` | Clinic sync and membership API; filters local PIN records on both read and write |
 | `C8qBMDOA.md` | Product blueprint (Arabic) |
 | `1_6.md` | Source text of the leveled passages |
-| `*design-pack*.pdf`, `*.jpg` | UI designs, logo and the Roo mascot |
+| `*design-pack*.pdf`, `*.jpg` | UI designs, logo and the Sanfour mascot |
 | `.nojekyll` | Disables Jekyll on GitHub Pages |
 
 ## Deployment
@@ -74,6 +77,8 @@ Student and session data live in browser **localStorage**, per device and per do
 | `sanfour_students` | Students `{id, name, consent}` |
 | `sanfour_h` | Session history `{sid, ts, date, title, grade, level, wcpm, acc, comp, skills}` |
 | `sanfour_custom` | Doctor-authored passages |
+| `sanfour_rubrics` | Per-grade specialist rubric versions and score descriptions |
+| `sanfour_assessments` | Specialist-entered skill scores, evidence notes, and the rubric snapshot used |
 | `sanfour_pin` | Local doctor-page convenience lock; never included in clinic sync or backups |
 | `sanfour_cur`, `sanfour_timed` | Session settings |
 
@@ -81,6 +86,7 @@ Student and session data live in browser **localStorage**, per device and per do
 - Clearing browser storage deletes local data (use Backup). Clinic sync stores student and session data until the clinic deletes it.
 - Local PINs are stored unencrypted on the device. They are convenience locks, not real security; protect shared devices with their operating-system account lock.
 - JSON backups contain student names, consent records, and session results. Store them securely and delete old copies when they are no longer needed.
+- Specialist assessments and rubric versions sync with clinic data and are included in backups. Assessment evidence notes may contain child information; keep them brief and appropriate for the current clinic access model.
 - The Groq free tier has rate limits.
 - WCPM targets are **provisional** and need validation by Arabic reading specialists.
 - The AI marks are suggestions; disfluency (stuttering) detection is not reliable yet.
