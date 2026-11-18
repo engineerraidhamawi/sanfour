@@ -11,6 +11,13 @@ async function r(...cmd) {
 const hash = (p, s) => crypto.scryptSync(p, s, 64).toString('hex');
 const getJ = async k => { const v = await r('GET', k); return v ? JSON.parse(v) : null; };
 const setJ = (k, o) => r('SET', k, JSON.stringify(o));
+const PRIVATE_LOCAL_KEYS = new Set(['sanfour_users', 'sanfour_pin']);
+function safeClinicData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return Object.fromEntries(Object.entries(data).filter(([key, value]) =>
+    key.startsWith('sanfour_') && !PRIVATE_LOCAL_KEYS.has(key) && typeof value === 'string'
+  ));
+}
 const emailOk = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 async function readBody(req) {
   let b = req.body;
@@ -84,11 +91,21 @@ module.exports = async (req, res) => {
     const x = await ctx(b.token);
     if (x.err) return res.status(x.err[0]).json({ error: x.err[1] });
     const { em, cid, c, role } = x, info = { role, clinic: { name: c.name } };
-    if (a === 'pull') { const d = await getJ('cdata:' + cid); return res.status(200).json(Object.assign({ data: null, updated_at: 0 }, d || {}, info)); }
+    if (a === 'pull') {
+      const key = 'cdata:' + cid, d = await getJ(key);
+      if (d && d.data) {
+        const safeData = safeClinicData(d.data);
+        if (Object.keys(safeData).length !== Object.keys(d.data).length) {
+          d.data = safeData;
+          await setJ(key, d);
+        }
+      }
+      return res.status(200).json(Object.assign({ data: null, updated_at: 0 }, d || {}, info));
+    }
     if (a === 'push') {
       const cur = await getJ('cdata:' + cid);
       if (cur && cur.updated_at > (+b.base || 0)) return res.status(409).json({ error: 'conflict', data: cur.data, updated_at: cur.updated_at });
-      const rec = { data: b.data || {}, updated_at: Date.now(), by: em };
+      const rec = { data: safeClinicData(b.data), updated_at: Date.now(), by: em };
       await setJ('cdata:' + cid, rec);
       return res.status(200).json({ updated_at: rec.updated_at });
     }
