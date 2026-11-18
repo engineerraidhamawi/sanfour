@@ -64,9 +64,14 @@ label{display:block;font-weight:700;margin:14px 0 6px}
 /* Reading screen */
 #read .card:first-child{display:flex;flex-direction:column;max-height:calc(100vh - 150px);margin-bottom:0}
 #read h2{font-size:22px;margin:0}
+#read .reading-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#read .story-chip{display:inline-flex;align-items:center;gap:6px;background:#e5f7f3;color:#176d68;border-radius:999px;padding:6px 12px;font-weight:800}
+#read .image-download{background:linear-gradient(135deg,#ffca3a,#ff9f43);color:#43340b;box-shadow:0 4px 0 #e2a927}
+#read .image-download:hover{transform:translateY(-2px)}
 #read>.row{position:sticky;bottom:0;background:var(--bg);padding:8px 0;margin:0;z-index:20}
 #rnote{margin:4px 0}
-#ptext{overflow:auto;flex:1;min-height:120px;font-size:clamp(20px,2.6vw,30px);line-height:2.05;padding-left:6px}
+#ptext{overflow:auto;flex:1;min-height:120px;font-size:clamp(20px,2.6vw,30px);line-height:2.05;padding:14px 18px;background:linear-gradient(150deg,#fffdf7,#fff6dd);border:2px solid #f5dda0;border-radius:22px;box-shadow:inset 0 0 0 5px rgba(255,255,255,.68)}
+#read .story-doodles{color:#e79f21;font-size:19px;letter-spacing:8px;margin:0 0 4px}
 #aiOut{max-height:28vh;overflow:auto}
 .timer{font-size:30px;font-weight:800;color:var(--c);min-width:60px;text-align:center}
 #cfBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
@@ -91,6 +96,8 @@ label{display:block;font-weight:700;margin:14px 0 6px}
 .opt{display:block;width:100%;margin:6px 0;padding:10px 16px;text-align:right;background:var(--bg);color:var(--s);border:2px solid #e8dcc4;font-size:19px}
 .opt.chosen{border-color:var(--t);background:#e3f5f4}
 #qtext{font-size:22px!important;margin-bottom:6px}
+.question-progress{height:12px;background:#e8f2f1;border-radius:99px;overflow:hidden;margin:8px 0 14px}
+.question-progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffca3a,#ff7a59,#a56de2);border-radius:99px;transition:width .25s ease}
 table{width:100%;border-collapse:collapse;font-size:18px}
 td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 
@@ -113,6 +120,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  #ptext{font-size:21px}
  #read .card:first-child{max-height:calc(100vh - 190px)}
 }
+@media(prefers-reduced-motion:reduce){.question-progress span,#read .image-download{transition:none}}
 </style>
 </head>
 <body>
@@ -132,7 +140,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
   <h2 style="margin-top:18px">المستوى</h2><div class="row" id="levels"></div>
  </div>
  <div class="card"><h2>اختر نصًّا</h2><div class="plist" id="plist"></div></div>
- <div class="row">
+ <div class="row" style="justify-content:space-between">
   <button class="yellow" onclick="openDoctor()">✍️ إضافة نص (للدكتورة)</button>
   <button class="alt" onclick="showStudents()">👥 الطلاب</button>
   <button class="alt" onclick="showHistory()">سجل النتائج</button>
@@ -193,7 +201,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 
 <section id="read" class="hidden">
  <div class="card">
-  <div class="row" style="justify-content:space-between"><h2 id="ptitle"></h2><div class="timer" id="timer">٠</div></div>
+  <div class="reading-heading"><div><p class="story-doodles" aria-hidden="true">✦　☁　✦　⭐</p><span class="story-chip">📖 قصة اليوم</span><h2 id="ptitle"></h2></div><div class="row"><button class="image-download small" onclick="downloadPassageImage(P)">🖼️ تنزيل القصة كصورة</button><div class="timer" id="timer">٠</div></div></div>
   <p class="note" id="rnote"></p>
   <div class="passage" id="ptext"></div>
   <div id="aiOut" class="note"></div>
@@ -217,7 +225,7 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
 </section>
 
 <section id="quiz" class="hidden">
- <div class="card"><p class="note" id="qnum"></p><span class="tag" id="qskill"></span><h2 id="qtext" style="font-size:28px"></h2><div id="qopts"></div></div>
+ <div class="card"><p class="note" id="qnum"></p><div class="question-progress" aria-hidden="true"><span id="qProgressBar"></span></div><span class="tag" id="qskill"></span><h2 id="qtext" style="font-size:28px"></h2><div id="qopts"></div></div>
  <div class="row"><button id="nextQ" onclick="nextQuestion()" disabled>التالي</button></div>
 </section>
 
@@ -545,6 +553,34 @@ function delPassage(id){if(confirm('حذف هذا النص؟')){localStorage.set
 /* ========== Reading session ========== */
 function modeLabel(){$('modeT').textContent=timed?'⏱ دقيقة واحدة (اضغطي للتغيير)':'♾️ بدون حد زمني (اضغطي للتغيير)';$('timer').textContent=timed?ar(60):ar(0);}
 function toggleTimed(){timed=!timed;localStorage.setItem('sanfour_timed',timed?'1':'0');modeLabel();}
+function posterRoundRect(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.stroke();}}
+function posterStar(ctx,x,y,r,color){ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r;const px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;i?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.closePath();ctx.fillStyle=color;ctx.fill();}
+function posterBook(ctx,x,y){ctx.save();ctx.translate(x,y);ctx.rotate(-.055);posterRoundRect(ctx,0,14,150,104,18,'#ff9b59');posterRoundRect(ctx,8,0,68,105,16,'#fff6d8','#e8c968');posterRoundRect(ctx,76,0,68,105,16,'#d6f3ee','#69bdb0');ctx.fillStyle='#d3a53d';ctx.fillRect(74,8,3,88);ctx.strokeStyle='#82c8bd';ctx.lineWidth=4;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(20,25+i*20);ctx.lineTo(61,25+i*20);ctx.stroke();ctx.beginPath();ctx.moveTo(92,25+i*20);ctx.lineTo(132,25+i*20);ctx.stroke();}posterStar(ctx,17,1,17,'#ffc93c');posterStar(ctx,137,4,13,'#ff7a59');ctx.restore();}
+function posterWrap(ctx,text,maxWidth,font){ctx.font=font;const words=String(text||'').trim().split(/\s+/).filter(Boolean),lines=[];let line='';for(const word of words){const next=line?line+' '+word:word;if(line&&ctx.measureText(next).width>maxWidth){lines.push(line);line=word;}else line=next;}if(line)lines.push(line);return lines;}
+async function downloadPassageImage(p){
+ if(!p||!p.text){alert('تعذّر تجهيز صورة القصة.');return;}
+ try{
+  if(document.fonts){await document.fonts.load('800 58px Tajawal');await document.fonts.load('400 43px Tajawal');await document.fonts.ready;}
+  const W=1200,pad=92,ctx0=document.createElement('canvas').getContext('2d');if(!ctx0)throw new Error('canvas');
+  ctx0.direction='rtl';
+  const titleFont='800 58px Tajawal, sans-serif',bodyFont='400 43px Tajawal, sans-serif',lineH=72;
+  const titleLines=posterWrap(ctx0,p.title,760,titleFont),bodyLines=posterWrap(ctx0,p.text,W-pad*2-40,bodyFont),titleTop=290,titleH=Math.max(82,titleLines.length*74),bodyTop=titleTop+titleH+90,H=bodyTop+bodyLines.length*lineH+190;
+  if(H>28000){alert('النص طويل جدًا لصورة واحدة. اختصريه أو قسّميه إلى مقاطع.');return;}
+  const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('canvas');
+  ctx.fillStyle='#fff9e9';ctx.fillRect(0,0,W,H);posterRoundRect(ctx,34,34,W-68,H-68,52,'#fffdf7','#eedda9');
+  const header=ctx.createLinearGradient(60,55,W-60,170);header.addColorStop(0,'#b9eee4');header.addColorStop(.56,'#fff0b5');header.addColorStop(1,'#ffd5d8');posterRoundRect(ctx,60,60,W-120,150,40,header);
+  ctx.direction='rtl';ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#254b67';ctx.font='800 48px Tajawal, sans-serif';ctx.fillText('سنفور',W-pad,112);
+  ctx.font='700 28px Tajawal, sans-serif';ctx.fillStyle='#4c6572';ctx.fillText(`الصف ${GN[p.grade]||''} · المستوى ${ar(p.level||1)} · ${LN[p.level||1]||''}`,W-pad,165);
+  posterStar(ctx,125,92,23,'#ff9f43');posterStar(ctx,170,163,14,'#a56de2');posterBook(ctx,108,220);
+  posterRoundRect(ctx,250,235,W-330,titleH+88,34,'#fff0cb','#f1d78d');ctx.fillStyle='#2d3a4a';ctx.font=titleFont;ctx.textAlign='right';ctx.textBaseline='top';titleLines.forEach((line,i)=>ctx.fillText(line,W-pad-28,titleTop+i*74,760));
+  const storyH=bodyLines.length*lineH+76;posterRoundRect(ctx,pad,bodyTop,W-pad*2,storyH,34,'#ffffff','#d8eee9');
+  ctx.fillStyle='#1fa6a0';posterRoundRect(ctx,W-pad-16,bodyTop+26,8,storyH-52,4,'#1fa6a0');
+  ctx.font=bodyFont;ctx.fillStyle='#263b4a';ctx.textAlign='right';ctx.textBaseline='top';bodyLines.forEach((line,i)=>ctx.fillText(line,W-pad-44,bodyTop+38+i*lineH,W-pad*2-105));
+  const footY=bodyTop+storyH+48;posterStar(ctx,pad+30,footY+14,16,'#ffca3c');posterStar(ctx,W-pad-30,footY+14,16,'#ff7a59');ctx.font='700 28px Tajawal, sans-serif';ctx.fillStyle='#526c78';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('قرأتَ اليوم خطوة جديدة نحو النجاح! ⭐',W/2,footY+14);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw new Error('image');
+  const a=document.createElement('a'),url=URL.createObjectURL(blob),safe=(p.title||'قصة').replace(/[\\/:*?"<>|]/g,' ').trim().replace(/\s+/g,'-').slice(0,70)||'قصة';a.href=url;a.download=`${safe}-سنفور.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }catch(e){alert('تعذّر إنشاء الصورة. جرّبي مرة أخرى بعد تحميل الصفحة.');}
+}
 function openPassage(id){
  if(!curSid){alert('أضف طالبًا أولًا من زر «+ طالب جديد».');return;}
  P=allPassages().find(p=>p.id==id);
@@ -620,6 +656,7 @@ function startQuestions(){qi=0;answers=[];renderQ();show('quiz');}
 function renderQ(){
  const q=P.questions[qi];
  $('qnum').textContent=`السؤال ${ar(qi+1)} من ${ar(P.questions.length)}`;
+ $('qProgressBar').style.width=Math.round((qi+1)/P.questions.length*100)+'%';
  $('qskill').textContent=q.skill;$('qtext').textContent=q.q;
  $('qopts').innerHTML=q.options.map((o,i)=>`<button class="opt" onclick="pick(${i},this)">${esc(o)}</button>`).join('');
  $('nextQ').disabled=true;$('nextQ').textContent=qi==P.questions.length-1?'إنهاء':'التالي';
@@ -1356,31 +1393,66 @@ let hpD=null,hpP=null,hpW=[],hpT0=0,hpTick=null,hpAud=null,hpAT=null,hpQi=0;
 const hpLog=()=>{try{return Object.assign({stars:0,reads:0,best:{},days:[]},JSON.parse(localStorage.getItem(HP_KEY)||'{}'));}catch(e){return {stars:0,reads:0,best:{},days:[]};}};
 const hpSave=o=>localStorage.setItem(HP_KEY,JSON.stringify(o));
 (function(){const c=document.createElement('style');c.textContent=`
-#hp{position:fixed;inset:0;z-index:500;background:var(--bg);overflow:auto;padding:12px}
+#hp{position:fixed;inset:0;z-index:500;background:radial-gradient(circle at 8% 8%,#fff1c9 0 110px,transparent 112px),radial-gradient(circle at 94% 28%,#d9f4ee 0 130px,transparent 132px),linear-gradient(160deg,#fffaf0,#f3fbff 65%,#fff6f7);overflow:auto;padding:12px}
 #hp .wrap{max-width:820px;margin:0 auto}
+#hp .hp-hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#baf0e5,#fff0b7 58%,#ffd5d8);border:3px solid #fff;border-radius:28px;padding:18px;box-shadow:0 10px 0 rgba(45,58,74,.08)}
+#hp .hp-hero:after{content:'✨　🌈　⭐';position:absolute;top:16px;left:16px;font-size:24px;transform:rotate(-7deg)}
+#hp .hp-mascot{font-size:52px;filter:drop-shadow(0 5px 0 rgba(45,58,74,.08));margin:0}
+#hp .hp-hero h2{font-size:30px;color:#254b67;margin:2px 0}
+#hp .hp-stat-row{margin-top:14px}
+#hp .hp-stat-row .stat{border:2px solid #fff;background:#fffaf0;border-radius:18px}
+#hp .hp-stat-row .stat:nth-child(2){background:#f1e5ff}
+#hp .hp-stat-row .stat:nth-child(3){background:#e4f5ff}
+#hp .hp-story-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px}
+#hp .hp-story-tile{display:flex;align-items:center;gap:13px;width:100%;min-height:102px;margin:0;padding:12px;background:linear-gradient(135deg,#fff,#fff7e4);color:var(--s);border:2px solid #f4d783;border-radius:22px;text-align:right;box-shadow:0 5px 0 #f0dfa8;transition:transform .18s,box-shadow .18s}
+#hp .hp-story-tile:hover{transform:translateY(-3px) rotate(-.4deg);box-shadow:0 8px 0 #f0dfa8}
+#hp .hp-book-art{display:grid;place-items:center;flex:0 0 64px;height:64px;border-radius:20px;background:linear-gradient(145deg,#ffe29a,#ffc7b0);font-size:34px;transform:rotate(-4deg)}
+#hp .hp-story-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+#hp .hp-story-copy strong{font-size:20px;line-height:1.45}
+#hp .hp-story-meta{font-size:14px;color:#657886}
+#hp .hp-story-star{font-size:22px;align-self:flex-start}
+#hp .hp-parent-note{border:2px dashed #b3ded8;background:#f8fffd}
 #hp .pbtn{display:block;width:100%;text-align:right;margin:8px 0;background:#fff;color:var(--s);border:2px solid var(--y);font-size:20px;padding:14px 18px}
-#hp .ptx{font-size:30px;line-height:2.3;background:#FFF8EC;border-radius:14px;padding:8px 14px}
+#hp .ptx{font-size:clamp(24px,4.4vw,32px);line-height:2.15;background:linear-gradient(145deg,#fffefa,#fff5dc);border:3px solid #f3d98f;border-radius:24px;padding:18px;box-shadow:inset 0 0 0 5px #fff;position:relative}
+#hp .ptx:before{content:'✦';position:absolute;top:3px;left:14px;color:#ffb930;font-size:25px}
 #hp .ptx span{padding:2px 3px;border-radius:8px}
-#hp .ptx span.on{background:var(--y)}
+#hp .ptx span.on{background:#ffe37b;box-shadow:0 3px 0 #edbd35}
+#hp .hp-story-toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0}
+#hp .hp-download{background:linear-gradient(135deg,#ffc93c,#ff9f43);color:#43340b;box-shadow:0 4px 0 #e2a927}
+#hp .hp-question-card{background:linear-gradient(145deg,#fff,#f1f8ff);border:2px solid #c7e7f4;border-radius:24px}
+#hp .opt{border-radius:18px;border-color:#d4e4ec;transition:transform .16s,box-shadow .16s}
+#hp .opt:nth-of-type(odd){background:#fff4d6}
+#hp .opt:nth-of-type(even){background:#e8f6ff}
+#hp .opt.chosen{border-color:#1fa6a0;background:#c8f2e7}
+#hp .opt:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 0 rgba(45,58,74,.1)}
+#hp .opt:focus-visible,.hp-story-tile:focus-visible{outline:4px solid #2d3a4a;outline-offset:2px}
+#hp .hp-feedback{min-height:38px;padding:8px;border-radius:12px}
+#hp .hp-feedback.good{color:#14785b;background:#e2f8ee;animation:hpPop .3s ease-out}
+#hp .hp-feedback.try{color:#805b00;background:#fff4ce}
+#hp .hp-quiz-progress{height:12px;background:#dfeef1;border-radius:99px;overflow:hidden;margin:10px 0}
+#hp .hp-quiz-progress span{display:block;height:100%;background:linear-gradient(90deg,#23b99f,#61c9e8,#a56de2);border-radius:99px;transition:width .25s}
+@keyframes hpPop{50%{transform:scale(1.06)}}
 #hp .hpTm{font-size:34px;font-weight:800;color:var(--c)}
-@media(max-width:600px){#hp .ptx{font-size:24px}}`;document.head.appendChild(c);})();
+@media(max-width:600px){#hp .ptx{font-size:24px;padding:14px}#hp .hp-hero h2{font-size:25px}#hp .hp-story-copy strong{font-size:18px}}
+@media(prefers-reduced-motion:reduce){#hp .hp-story-tile,#hp .hp-quiz-progress span,#hp .hp-feedback.good,#hp .opt{transition:none;animation:none}}
+`;document.head.appendChild(c);})();
 function hpStopAud(){if(hpAud){hpAud.pause();hpAud=null;}clearInterval(hpAT);document.querySelectorAll('#hpTx span.on').forEach(e=>e.classList.remove('on'));const b=$('hpListen');if(b)b.textContent='🔊 استمع لسنفور';}
 function hpOpen(d){hpD=d;document.body.insertAdjacentHTML('beforeend','<div id="hp"><div class="wrap" id="hpBody"></div></div>');hpHome();}
 function hpHead(){return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="row"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--s)"><b style="font-size:24px">سنفو<span style="color:var(--y)">ر</span></b></div></div>`;}
 function hpHome(){
  hpStopAud();clearInterval(hpTick);
  const lg=hpLog(),list=PASSAGES.filter(p=>p.grade==hpD.g&&p.level<=hpD.l).sort((a,b)=>b.level-a.level);
- $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:44px;margin:0">🦘</p><h2 style="font-size:28px">مرحبًا يا ${esc(hpD.n)}!</h2><p style="font-size:20px;margin:0">هيا نتدرّب على القراءة مع سنفور</p><div class="stats" style="margin-top:12px">${stat('نجومك ⭐',ar(lg.stars))+stat('أيام التدريب 🔥',ar(lg.days.length))+stat('مرات القراءة 📖',ar(lg.reads))}</div></div>
-<div class="card"><h2>اختر قصة</h2>${list.length?list.map(p=>`<button class="pbtn" onclick="hpRead('${p.id}')">${p.level==hpD.l?'⭐':'🌱'} ${esc(p.title)}${lg.best[p.id]?` <span class="note">— أفضل وقت: ${ar(lg.best[p.id])} ث</span>`:''}</button>`).join(''):'<p class="note">لا توجد قصص لهذا المستوى بعد.</p>'}</div>
-<div class="card"><h2>👪 لولي الأمر</h2><p>اجلسوا بجانب طفلكم ١٠ دقائق يوميًّا: يستمع أولًا لسنفور، ثم يقرأ بصوت مرتفع، ثم يعيد القراءة. امدحوا الجهد قبل السرعة.</p><p class="note">لا يُسجَّل صوت الطفل، ولا تُرسل نتائج التدريب إلى العيادة. التقدّم محفوظ على هذا الجهاز فقط.</p></div>`;
+ $('hpBody').innerHTML=hpHead()+`<div class="hp-hero" style="text-align:center"><p class="hp-mascot" aria-hidden="true">🦘📚</p><h2>مرحبًا يا ${esc(hpD.n)}!</h2><p style="font-size:20px;margin:0">هيا نتدرّب على القراءة مع سنفور</p><div class="stats hp-stat-row">${stat('نجومك ⭐',ar(lg.stars))+stat('أيام التدريب 🔥',ar(lg.days.length))+stat('مرات القراءة 📖',ar(lg.reads))}</div></div>
+<div class="card"><h2>اختر قصة مغامرتك اليوم ✨</h2>${list.length?'<div class="hp-story-list">'+list.map(p=>`<button class="hp-story-tile" onclick="hpRead('${p.id}')"><span class="hp-book-art" aria-hidden="true">📖</span><span class="hp-story-copy"><strong>${esc(p.title)}</strong><span class="hp-story-meta">الصف ${GN[p.grade]} · المستوى ${ar(p.level)} · ${LN[p.level]}${lg.best[p.id]?` · أفضل وقت ${ar(lg.best[p.id])} ث`:''}</span></span><span class="hp-story-star" aria-hidden="true">${p.level==hpD.l?'⭐':'🌱'}</span></button>`).join('')+'</div>':'<p class="note">لا توجد قصص لهذا المستوى بعد.</p>'}</div>
+<div class="card hp-parent-note"><h2>👪 لولي الأمر</h2><p>اجلسوا بجانب طفلكم ١٠ دقائق يوميًّا: يستمع أولًا لسنفور، ثم يقرأ بصوت مرتفع، ثم يعيد القراءة. امدحوا الجهد قبل السرعة.</p><p class="note">لا يُسجَّل صوت الطفل، ولا تُرسل نتائج التدريب إلى العيادة. التقدّم محفوظ على هذا الجهاز فقط.</p></div>`;
  window.scrollTo(0,0);$('hp').scrollTop=0;
 }
 function hpRead(id){
  hpStopAud();clearInterval(hpTick);
  hpP=PASSAGES.find(p=>p.id==id);if(!hpP)return;
  hpW=hpP.text.trim().split(/\s+/);
- $('hpBody').innerHTML=hpHead()+`<div class="row"><button class="alt small" onclick="hpHome()">🏠 القصص</button></div>
-<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(hpP.title)}</h2><span class="hpTm" id="hpTm">${ar(0)}</span></div><p class="note">💡 استمع أولًا لسنفور، ثم اقرأ القصة بصوت مرتفع.</p><div class="ptx" id="hpTx">${hpW.map(w=>`<span>${esc(w)}</span>`).join(' ')}</div></div>
+ $('hpBody').innerHTML=hpHead()+`<div class="hp-story-toolbar"><button class="alt small" onclick="hpHome()">🏠 القصص</button><button class="hp-download" onclick="downloadPassageImage(hpP)">🖼️ تنزيل القصة كصورة</button></div>
+<div class="card"><div class="row" style="justify-content:space-between"><div><span class="story-chip">📚 مغامرة سنفور</span><h2 style="margin:6px 0 0">${esc(hpP.title)}</h2></div><span class="hpTm" id="hpTm">${ar(0)}</span></div><p class="note">💡 استمع أولًا لسنفور، ثم اقرأ القصة بصوت مرتفع.</p><div class="ptx" id="hpTx">${hpW.map(w=>`<span>${esc(w)}</span>`).join(' ')}</div></div>
 <div class="row" id="hpCtl"><button class="yellow" id="hpListen" onclick="hpListen()">🔊 استمع لسنفور</button><button id="hpGo" onclick="hpStart()">▶️ ابدأ القراءة</button><button class="coral hidden" id="hpStop" onclick="hpStop()">⏹ انتهيت!</button></div><div id="hpRes"></div>`;
  $('hp').scrollTop=0;
 }
@@ -1410,13 +1482,13 @@ function hpQ(i){
  hpQi=i;const qs=hpP.questions||[],q=qs[i];
  if(!q){const lg=hpLog();lg.stars++;hpSave(lg);
   $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:64px;margin:0">🎉</p><h2 style="font-size:28px">أنهيت الأسئلة يا ${esc(hpD.n)}!</h2><p style="font-size:20px;font-weight:700">+⭐ نجمة جديدة</p></div><div class="row"><button onclick="hpRead('${hpP.id}')">🔁 اقرأ القصة مرة أخرى</button><button class="alt" onclick="hpHome()">🏠 قصص أخرى</button></div>`;return;}
- $('hpBody').innerHTML=hpHead()+`<div class="card"><p class="note">السؤال ${ar(i+1)} من ${ar(qs.length)}</p><h2 style="font-size:26px">${esc(q.q)}</h2>${q.options.map((o,k)=>`<button class="opt" onclick="hpPick(${k},this)">${esc(o)}</button>`).join('')}<p id="hpFb" style="font-size:22px;font-weight:700;min-height:34px"></p></div><div class="row"><button class="alt small" onclick="hpRead('${hpP.id}')">📖 ارجع إلى القصة</button></div>`;
+ $('hpBody').innerHTML=hpHead()+`<div class="card hp-question-card"><p class="note">السؤال ${ar(i+1)} من ${ar(qs.length)} ⭐</p><div class="hp-quiz-progress" aria-hidden="true"><span style="width:${Math.round((i+1)/qs.length*100)}%"></span></div><h2 style="font-size:26px">${esc(q.q)}</h2>${q.options.map((o,k)=>`<button class="opt" onclick="hpPick(${k},this)">${esc(o)}</button>`).join('')}<p id="hpFb" class="hp-feedback" aria-live="polite"></p></div><div class="row"><button class="alt small" onclick="hpRead('${hpP.id}')">📖 ارجع إلى القصة</button></div>`;
  $('hp').scrollTop=0;
 }
 function hpPick(k,el){
  const q=hpP.questions[hpQi];
- if(k===q.answer){el.classList.add('chosen');$('hpFb').textContent='✅ أحسنت!';document.querySelectorAll('#hp .opt').forEach(b=>b.disabled=true);setTimeout(()=>hpQ(hpQi+1),1000);}
- else{el.disabled=true;$('hpFb').textContent='🤔 فكّر مرة أخرى، أنت قريب!';}
+ if(k===q.answer){el.classList.add('chosen');$('hpFb').classList.add('good');$('hpFb').textContent='✅ أحسنت!';document.querySelectorAll('#hp .opt').forEach(b=>b.disabled=true);setTimeout(()=>hpQ(hpQi+1),1000);}
+ else{el.disabled=true;$('hpFb').classList.add('try');$('hpFb').textContent='🤔 فكّر مرة أخرى، أنت قريب!';}
 }
 window.addEventListener('load',()=>{if(location.hash.startsWith('#practice=')){try{hpOpen(b64d(location.hash.slice(10)));}catch(e){alert('رابط التدريب غير صالح.');}}});
 /* Doctor side: practice link card in the student profile */

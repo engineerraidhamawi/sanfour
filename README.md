@@ -40,6 +40,10 @@ An Arabic, right-to-left web app that helps doctors, reading specialists and tea
 - **Student profiles:** WCPM and comprehension charts (right-to-left), per-skill totals, session history, and a level recommendation based on the last 3 sessions at the same level
 - **Parent weekly report:** a preview-first, revocable link (WhatsApp / copy) containing only a summary snapshot; expires after 7 days
 
+### Child experience
+- Colorful home-practice story cards, a star-and-progress welcome panel, a highlighted reading page, and encouraging answer feedback
+- **Download a passage as an illustrated PNG:** creates a printable, right-to-left story page with Sanfour branding and original book/star drawings; no external image service is used
+
 ### Security & admin
 - Login screen (username + 4–6 digit PIN); the first account is the admin
 - Admin: add or remove users, change roles (admin / doctor-teacher), reset PINs
