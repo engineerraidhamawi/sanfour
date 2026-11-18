@@ -40,6 +40,21 @@ input.full{max-width:none;margin:8px 0}
 textarea{width:100%;font-size:19px;line-height:1.8;margin-top:6px}
 label{display:block;font-weight:700;margin:14px 0 6px}
 .qcard{border:2px solid #f0e6d2;border-radius:18px;padding:10px;margin:8px 0}
+.rubric-item{border:1px solid #eadfcd;border-radius:14px;padding:12px;margin:8px 0;background:#fffdf9}
+.rubric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.rubric-grid input,.rubric-grid select{width:100%;max-width:none}
+.score-select{max-width:210px}
+.student-chart{background:linear-gradient(145deg,#fff 20%,#f1fbfa 100%);border:1px solid #dff0ed;border-radius:20px;padding:14px;margin:12px 0}
+.student-chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.student-chart-head h3{margin:0;font-size:20px}
+.student-chart-scroll{overflow-x:auto;overscroll-behavior-x:contain;margin:8px -4px}
+.student-chart-scroll svg{display:block;height:auto;min-width:640px;max-width:none}
+.student-chart-footer{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:9px 12px;margin-top:6px;font-size:16px}
+.chart-data{margin-top:8px;background:#fff;border-radius:12px;padding:8px 12px}
+.chart-data summary{cursor:pointer;color:var(--t);font-weight:700}
+.chart-mascot{font-size:28px;line-height:1}
+.chart-chip{display:inline-flex;align-items:center;gap:6px;background:#fff4d5;color:var(--s);border-radius:999px;padding:5px 10px;font-weight:700}
+.chart-target-key{display:inline-block;width:22px;border-top:3px dashed var(--s);opacity:.6}
 .optrow{flex-wrap:nowrap}
 .optrow input[type=radio]{width:26px;max-width:26px;height:26px;flex:none;padding:0}
 
@@ -136,14 +151,22 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  <div class="card">
   <div class="row" style="justify-content:space-between">
    <h2 id="prName" style="font-size:30px;margin:0"></h2>
-   <div class="row"><button class="alt small" onclick="showStudents()">كل الطلاب</button><button class="alt small" onclick="deleteStudent()">حذف الطالب</button></div>
+   <div class="row"><button class="yellow small" onclick="openAssessment(profSid)">📝 تقييم الفهم</button><button class="alt small" onclick="showStudents()">كل الطلاب</button><button class="alt small" onclick="deleteStudent()">حذف الطالب</button></div>
   </div>
  </div>
  <div id="prBody"></div>
  <div class="row"><button onclick="goHome()">الصفحة الرئيسية</button></div>
 </section>
 
+<section id="assessment" class="hidden">
+ <div class="card"><h2>تقييم الفهم القرائي</h2><p id="assessmentStudent" class="note"></p><div class="row"><label for="assessmentGrade">الصف</label><select id="assessmentGrade" onchange="renderAssessmentForm()"></select></div><label for="assessmentTitle">اسم الاختبار أو النص</label><input id="assessmentTitle" class="full" maxlength="120" placeholder="مثال: اختبار الفهم القرائي"><p id="assessmentVersion" class="note"></p><p class="note">قيّمي كل مهارة وفق التعريفات المعتمدة. يمكنك اختيار «لم يُقيّم» عند عدم توفر دليل. لا ينتج هذا التقييم تشخيصًا أو توصية آلية بالمستوى.</p></div>
+ <div id="assessmentItems"></div>
+ <div class="card"><label for="assessmentNotes">ملاحظات عامة (اختياري)</label><textarea id="assessmentNotes" rows="3" maxlength="2000" placeholder="ملاحظات المختص"></textarea><div id="assessmentTotal" class="stats"></div></div>
+ <p id="assessmentError" class="note" style="color:var(--c);font-weight:700"></p><div class="row"><button onclick="saveAssessment()">حفظ التقييم</button><button class="alt" onclick="cancelAssessment()">إلغاء</button></div>
+</section>
+
 <section id="doctor" class="hidden">
+ <div class="card"><h2>إعداد التقييم</h2><p class="note">خصصي المهارات والأوزان ووصف درجات التقييم لكل صف. التغييرات تحفظ إصدارًا جديدًا ولا تغيّر التقييمات السابقة.</p><button class="alt" onclick="openRubricSettings()">⚙️ إعداد سلم الدرجات والمهارات</button></div>
  <div class="card">
   <h2>نص جديد</h2>
   <label>عنوان النص</label><input id="dTitle" class="full" placeholder="مثال: رحلة إلى البحر">
@@ -161,6 +184,11 @@ td,th{padding:8px;border-bottom:1px solid #eee;text-align:right}
  <p class="note" id="dErr" style="color:var(--c);font-weight:700"></p>
  <div class="row"><button onclick="savePassage()">حفظ ونشر</button><button class="alt" onclick="goHome()">إلغاء</button></div>
  <div class="card"><h2>نصوصي</h2><div id="myList"></div></div>
+</section>
+
+<section id="rubricSettings" class="hidden">
+ <div class="card"><h2>إعداد التقييم حسب الصف</h2><p class="note">يبدأ كل صف بالمهارات الـ١٢ وأوزان متساوية. حدّثي المهارات أو الأوزان أو أوصاف الدرجات، ثم احفظي إصدارًا جديدًا. لا توجد حدود نجاح أو تشخيص تلقائي.</p><label for="rubricGrade">الصف</label><select id="rubricGrade" onchange="renderRubricSettings()"></select><div id="rubricScale"></div></div>
+ <div id="rubricCriteria"></div><p id="rubricError" class="note" style="color:var(--c);font-weight:700"></p><div class="row"><button onclick="saveRubricSettings()">حفظ إصدار جديد</button><button class="alt" onclick="goHome()">رجوع</button></div>
 </section>
 
 <section id="read" class="hidden">
@@ -238,6 +266,21 @@ const TARGETS={1:[20,30,40],2:[40,50,60],3:[55,65,75],4:[65,75,85],5:[75,85,95],
 const GN=['','الأول','الثاني','الثالث','الرابع','الخامس','السادس'];
 const LN=['','دعم','ضمن الصف','تحدٍّ'];
 const SKILLS=['حرفي','استنتاجي','مفردات','ترتيب الأحداث','الفكرة الرئيسة','نقدي'];
+const COMPREHENSION_CRITERIA=[
+ {id:'context_synonym',domain:'مباشر',label:'تحديد مرادف الكلمة داخل السياق'},
+ {id:'characters',domain:'مباشر',label:'ذكر الشخصيات التي وردت في القصة'},
+ {id:'places',domain:'مباشر',label:'ذكر الأماكن التي وردت في القصة'},
+ {id:'main_idea',domain:'استنتاجي',label:'استخلاص الفكرة الرئيسية من القصة'},
+ {id:'sub_idea',domain:'استنتاجي',label:'استخلاص فكرة فرعية من القصة'},
+ {id:'values',domain:'استنتاجي',label:'استنتاج القيم المتضمنة في القصة'},
+ {id:'relevance',domain:'نقدي',label:'التمييز بين ما يتصل بالموضوع وما لا يتصل'},
+ {id:'judgment',domain:'نقدي',label:'إصدار حكم على موقف أو شخصية وردت في القصة'},
+ {id:'mood',domain:'تذوقي',label:'إدراك الحالة الشعورية المسيطرة على أجواء القصة'},
+ {id:'solutions',domain:'إبداعي',label:'اقتراح حلول جديدة للمشكلات التي وردت في القصة'},
+ {id:'prediction',domain:'إبداعي',label:'التنبؤ بالأحداث'},
+ {id:'new_title',domain:'إبداعي',label:'وضع عنوان جديد للقصة'}
+];
+const DEFAULT_SCORE_LABELS=['لم يُظهر المهارة بعد','أظهر المهارة جزئيًا','أظهر المهارة بوضوح'];
 const ar=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -255,7 +298,7 @@ let grade=2,level=2,P=null,words=[],errs=new Set(),lastIdx=-1,mode='err',phase='
 let curSid=localStorage.getItem('sanfour_cur')||'',profSid='';
 let timed=localStorage.getItem('sanfour_timed')==='1';
 let lastBlob=null,aiPause=new Set(),aiRep=new Set();
-const SECTIONS=['home','students','profile','doctor','read','result','quiz','done','summary','history','admin','parent'];
+const SECTIONS=['home','students','profile','assessment','doctor','rubricSettings','read','result','quiz','done','summary','history','admin','parent'];
 function show(id){SECTIONS.forEach(s=>$(s).classList.toggle('hidden',s!==id));if(id=='profile')addParentCard();window.scrollTo(0,0)}
 function goHome(){renderHome();show('home');}
 
@@ -297,6 +340,20 @@ function chart(vals,max,color,target){
  vals.forEach((v,i)=>{s+=`<circle cx="${X(i)}" cy="${Y(v)}" r="7" fill="${color}"/><text x="${X(i)}" y="${Y(v)-14}" text-anchor="middle" font-size="18" font-family="Tajawal" fill="#2D3A4A">${ar(v)}</text><text x="${X(i)}" y="${H-10}" text-anchor="middle" font-size="15" fill="#5b6675">${ar(i+1)}</text>`;});
  return s+'</svg>';
 }
+function studentProgressCard(title,vals,max,target,unit,labels,note){
+ if(!vals.length)return `<div class="card"><h2>${esc(title)}</h2><p class="note">${esc(note||'لا توجد بيانات كافية لعرض الرسم بعد.')}</p></div>`;
+ const n=vals.length,W=Math.max(700,n*54+78),H=285,pl=54,pr=24,pt=30,pb=52,base=H-pb,plotH=base-pt,plotW=W-pl-pr,step=plotW/n,bw=Math.min(34,step*.64),ceiling=Math.max(max||0,...vals,target||0,1),Y=v=>base-Math.max(0,Math.min(ceiling,v))/ceiling*plotH;
+ const colors=['#FF9F43','#A56DE2','#22AFC4','#FF7187','#70BF57','#FFC93C'],ticks=[0,.25,.5,.75,1];
+ let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:${W}px;height:auto" role="img" aria-label="${esc(title)}؛ ${ar(n)} جلسة، الأقدم يمينًا والأحدث يسارًا">`;
+ ticks.forEach(t=>{const y=Y(ceiling*t);svg+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="#d9e6e5" stroke-width="2" stroke-dasharray="5 8"/><text x="${pl-10}" y="${y+5}" text-anchor="end" font-size="13" fill="#60747b">${ar(Math.round(ceiling*t))}</text>`;});
+ if(target!==null&&target!==undefined){const ty=Y(target);svg+=`<line x1="${pl}" y1="${ty}" x2="${W-pr}" y2="${ty}" stroke="#2D3A4A" stroke-opacity=".55" stroke-width="2.5" stroke-dasharray="8 6"/><rect x="${pl+5}" y="${Math.max(2,ty-23)}" width="72" height="20" rx="10" fill="#fff"/><text x="${pl+41}" y="${Math.max(16,ty-9)}" text-anchor="middle" font-size="12" font-weight="700" fill="#2D3A4A">الهدف ${ar(target)}</text>`;}
+ svg+=`<line x1="${pl}" y1="${base}" x2="${W-pr}" y2="${base}" stroke="#91bcb9" stroke-width="3" stroke-linecap="round"/>`;
+ vals.forEach((v,i)=>{const x=W-pr-step*(i+.5)-bw/2,y=Y(v),h=Math.max(2,base-y),fill=colors[i%colors.length],lab=(labels&&labels[i])||'';svg+=`<g><title>الجلسة ${ar(i+1)}${lab?' · '+esc(lab):''} · ${ar(v)} ${esc(unit)}</title><rect x="${x+2}" y="${y+4}" width="${bw}" height="${h}" rx="${Math.min(12,bw/3)}" fill="#2D3A4A" opacity=".08"/><rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="${Math.min(12,bw/3)}" fill="${fill}"/><text x="${x+bw/2}" y="${Math.max(pt-4,y-8)}" text-anchor="middle" font-size="14" font-weight="800" fill="#2D3A4A">${ar(v)}</text><text x="${x+bw/2}" y="${base+23}" text-anchor="middle" font-size="12" fill="#60747b">${ar(i+1)}</text></g>`;});
+ svg+='</svg>';
+ const delta=vals.length>1?vals[vals.length-1]-vals[vals.length-2]:null,trend=delta===null?'هذه بداية جميلة!':delta===0?'نتيجة قريبة من الجلسة السابقة':`مقارنة بالجلسة السابقة: ${delta>0?'+' : ''}${ar(delta)} ${unit}`;
+ const table=`<details class="chart-data"><summary>عرض بيانات الرسم كجدول</summary><table><caption>${esc(title)}</caption><thead><tr><th>ترتيب الجلسة</th><th>التاريخ</th><th>النتيجة</th></tr></thead><tbody>${vals.map((v,i)=>`<tr><td>${ar(i+1)}</td><td>${esc((labels&&labels[i])||'—')}</td><td>${ar(v)} ${esc(unit)}</td></tr>`).join('')}</tbody></table></details>`;
+ return `<div class="student-chart"><div class="student-chart-head"><h3>${esc(title)}</h3><span class="chart-chip">${ar(n)} جلسة</span></div><div class="student-chart-scroll" tabindex="0" role="region" aria-label="رسم ${esc(title)}">${svg}</div><div class="row note"><span>الأقدم إلى اليمين · الأحدث إلى اليسار</span>${target!==null&&target!==undefined?'<span class="chart-target-key" aria-hidden="true"></span><span>الهدف المبدئي</span>':''}</div><div class="student-chart-footer"><span class="chart-mascot" aria-hidden="true">🦘</span><span>${esc(trend)}<br><span class="note">كل محاولة فرصة جديدة للتعلّم 🌟${note?' · '+esc(note):''}</span></span></div>${table}</div>`;
+}
 function recommend(ss){
  ss=ss.filter(r=>r.benchmarkEligible!==false);
  if(!ss.length)return 'لا توجد جلسات صالحة للمقارنة (١٥ ثانية أو أكثر) بعد.';
@@ -315,20 +372,114 @@ function openProfile(sid){
  const st=getStudents().find(x=>x.id==sid);if(!st)return;
  profSid=sid;$('prName').textContent='👤 '+st.name;
  const ss=getHist().filter(r=>r.sid==sid).reverse();
- if(!ss.length){$('prBody').innerHTML='<div class="card"><p class="note">لا توجد جلسات لهذا الطالب بعد.</p></div>';show('profile');return;}
+ if(!ss.length){$('prBody').innerHTML='<div class="card"><p class="note">لا توجد جلسات قراءة لهذا الطالب بعد.</p></div>'+renderAssessmentHistory(sid);show('profile');return;}
  const lg=[...ss].reverse().find(r=>r.grade), target=lg?TARGETS[lg.grade][lg.level-1]:null;
  const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);
  const benchmarkSessions=ss.filter(r=>r.benchmarkEligible!==false);
  const wc=benchmarkSessions.map(r=>r.wcpm), cp=ss.map(r=>r.comp), lastBenchmark=benchmarkSessions[benchmarkSessions.length-1];
  let html=`<div class="card"><p class="note">${lg?`المستوى الحالي: الصف ${GN[lg.grade]} · المستوى ${ar(lg.level)} (${LN[lg.level]})`:''} · أداة متابعة تعليمية وليست تشخيصًا.</p><div class="stats">${stat('عدد الجلسات',ar(ss.length))+stat('نتائج قابلة للمقارنة',ar(benchmarkSessions.length))+stat('آخر سرعة صالحة للمقارنة',lastBenchmark?ar(lastBenchmark.wcpm):'—')+stat('أفضل سرعة صالحة للمقارنة',wc.length?ar(Math.max(...wc)):'—')+stat('متوسط الدقة',ar(avg(ss.map(r=>r.acc)))+'٪')+stat('متوسط الفهم',ar(avg(cp))+'٪')}</div></div>`;
- html+=`<div class="card"><h2>تطور سرعة القراءة (كلمة في الدقيقة)</h2>${wc.length?chart(wc,Math.max(...wc,target||0,10)*1.2,'#1FA6A0',target):'<p class="note">تظهر المقارنة بعد قراءة مدتها ١٥ ثانية أو أكثر.</p>'}<p class="note">${target!=null?`الخط المتقطع = الهدف المبدئي (${ar(target)}). `:''}الجلسات من اليمين (الأقدم) إلى اليسار (الأحدث). الجلسات الأقصر من ١٥ ثانية لا تدخل في المقارنة.</p></div>`;
- html+=`<div class="card"><h2>تطور الفهم (٪)</h2>${chart(cp,110,'#FF7A59',80)}<p class="note">الخط المتقطع = ٨٠٪ (فهم جيد).</p></div>`;
+ html+=studentProgressCard('تطور سرعة القراءة (كلمة في الدقيقة)',wc,Math.max(...wc,target||0,10)*1.2,target,'كلمة/دقيقة',benchmarkSessions.map(r=>r.date),'القراءات الأقصر من ١٥ ثانية لا تدخل في هذا الرسم.');
+ html+=studentProgressCard('تطور الفهم (٪)',cp,100,80,'نقطة',ss.map(r=>r.date),'الخط المتقطع هو هدف مبدئي للمتابعة فقط.');
  const sk={};ss.forEach(r=>Object.entries(r.skills||{}).forEach(([k,v])=>{sk[k]=sk[k]||[0,0];sk[k][0]+=v[0];sk[k][1]+=v[1];}));
  if(Object.keys(sk).length)html+=`<div class="card"><h2>الفهم حسب المهارة (كل الجلسات)</h2><table><tr><th>المهارة</th><th>الصحيح</th><th>النسبة</th></tr>${Object.entries(sk).map(([k,v])=>`<tr><td>${k}</td><td>${ar(v[0])} من ${ar(v[1])}</td><td>${ar(Math.round(v[0]/v[1]*100))}٪</td></tr>`).join('')}</table></div>`;
  html+=`<div class="card"><h2>التوصية</h2><p style="font-size:22px">${recommend(ss)}</p><p class="note">مؤشر للمتابعة فقط، وليس تشخيصًا. القرار النهائي للدكتورة.</p></div>`;
  html+=`<div class="card"><h2>كل الجلسات</h2><table><tr><th>#</th><th>التاريخ</th><th>النص</th><th>كلمة/دقيقة</th><th>الدقة</th><th>الفهم</th></tr>${ss.map((r,i)=>`<tr><td>${ar(i+1)}</td><td>${r.date}</td><td>${esc(r.title)}</td><td>${ar(r.wcpm)}</td><td>${ar(r.acc)}٪</td><td>${ar(r.comp)}٪</td></tr>`).reverse().join('')}</table></div>`;
- $('prBody').innerHTML=html;show('profile');
+ $('prBody').innerHTML=html+renderAssessmentHistory(sid);show('profile');
  });
+}
+
+/* ========== Specialist comprehension rubric ========== */
+const RUBRIC_KEY='sanfour_rubrics',ASSESSMENTS_KEY='sanfour_assessments';
+function safeRubric(g,r,preserveSnapshot=false){
+ if(!r||typeof r!=='object'||+r.grade!==g||!Number.isInteger(+r.version)||+r.version<1||typeof r.id!=='string'||!r.id||!Array.isArray(r.scale)||r.scale.length!==3||r.scale.some(x=>typeof x!=='string'||!x.trim()||x.length>100)||!Array.isArray(r.criteria))return null;
+ const found=Object.fromEntries(r.criteria.filter(x=>x&&typeof x==='object').map(x=>[x.id,x]));
+ const currentIds=new Set(COMPREHENSION_CRITERIA.map(c=>c.id)),migrated=!preserveSnapshot&&(COMPREHENSION_CRITERIA.some(c=>!found[c.id])||Object.keys(found).some(id=>!currentIds.has(id)));
+ const criteria=preserveSnapshot?r.criteria.map(x=>{if(!x||typeof x.id!=='string'||!x.id||typeof x.domain!=='string'||typeof x.label!=='string')return null;const weight=+x.weight;if(!Number.isInteger(weight)||weight<1||weight>5||x.domain.length>100||x.label.length>160)return null;return {id:x.id.slice(0,100),domain:x.domain,label:x.label,active:x.active===true,weight};}):COMPREHENSION_CRITERIA.map(c=>{const x=found[c.id];if(!x)return {...c,active:true,weight:1};const weight=+x.weight;if(!Number.isInteger(weight)||weight<1||weight>5)return null;return {...c,active:x.active===true,weight};});
+ if(!criteria.length||criteria.some(x=>!x)||!criteria.some(x=>x.active)||new Set(criteria.map(c=>c.id)).size!==criteria.length)return null;
+ return {id:r.id.slice(0,100),grade:g,version:+r.version,updatedAt:Number.isFinite(+r.updatedAt)?Math.max(0,+r.updatedAt):0,scale:r.scale.map(x=>x.trim()),criteria,migrated};
+}
+const getAssessments=()=>{
+ try{
+  const raw=JSON.parse(localStorage.getItem(ASSESSMENTS_KEY)||'[]');if(!Array.isArray(raw))return [];
+  return raw.filter(a=>a&&typeof a==='object'&&typeof a.id==='string'&&typeof a.sid==='string'&&a.sid&&Number.isInteger(+a.grade)&&+a.grade>=1&&+a.grade<=6&&typeof a.title==='string'&&Array.isArray(a.items))
+   .map(a=>{const rubric=safeRubric(+a.grade,a.rubricSnapshot,true);if(!rubric)return null;const criteria=Object.fromEntries(rubric.criteria.filter(c=>c.active).map(c=>[c.id,c])),seen=new Set();
+    const items=a.items.filter(x=>{if(!x||!criteria[x.skillId]||seen.has(x.skillId)||(x.score!==null&&(!Number.isInteger(+x.score)||+x.score<0||+x.score>2)))return false;seen.add(x.skillId);return true;}).map(x=>({skillId:x.skillId,domain:criteria[x.skillId].domain,label:criteria[x.skillId].label,weight:criteria[x.skillId].weight,score:x.score===null?null:+x.score,evidence:typeof x.evidence==='string'?x.evidence.slice(0,500):''}));
+    const assessed=items.filter(x=>x.score!==null),weight=assessed.reduce((n,x)=>n+x.weight,0),max=weight*2,points=assessed.reduce((n,x)=>n+x.score*x.weight,0),summary={points,max,weight,percent:max?Math.round(points/max*100):null},domains={};
+    items.forEach(x=>{const d=domains[x.domain]||(domains[x.domain]={points:0,max:0,weight:0,assessed:0});if(x.score!==null){d.points+=x.score*x.weight;d.max+=2*x.weight;d.weight+=x.weight;d.assessed++;}});Object.values(domains).forEach(d=>d.percent=d.max?Math.round(d.points/d.max*100):null);
+    return {id:a.id.slice(0,120),sid:a.sid,studentName:typeof a.studentName==='string'?a.studentName.slice(0,120):'',grade:+a.grade,title:a.title.slice(0,120),ts:Number.isFinite(+a.ts)?+a.ts:0,date:typeof a.date==='string'?a.date.slice(0,40):'',evaluator:typeof a.evaluator==='string'?a.evaluator.slice(0,120):'',rubricId:rubric.id,rubricVersion:rubric.version,rubricSnapshot:rubric,items,notes:typeof a.notes==='string'?a.notes.slice(0,2000):'',summary,domains};
+   }).filter(Boolean);
+ }catch(e){return [];}
+};
+function defaultRubric(g){return {id:'grade-'+g+'-default-v1',grade:g,version:1,updatedAt:0,scale:DEFAULT_SCORE_LABELS.slice(),criteria:COMPREHENSION_CRITERIA.map(c=>({...c,active:true,weight:1}))};}
+function rubricStore(){try{return JSON.parse(localStorage.getItem(RUBRIC_KEY)||'{}')||{};}catch(e){return {};}}
+function rubricVersions(g){const s=rubricStore(),arr=Array.isArray(s[g])?s[g]:[];return [defaultRubric(g),...arr.map(x=>safeRubric(g,x)).filter(Boolean)].reduce((a,x)=>{if(!a.some(y=>y.id===x.id))a.push(x);return a;},[]);}
+function currentRubric(g){
+ const versions=rubricVersions(g),latest=versions.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)||b.version-a.version||String(b.id).localeCompare(String(a.id)))[0];
+ if(!latest.migrated)return latest;
+ const updatedAt=Date.now(),next={...latest,id:`grade-${g}-v${Math.max(...versions.map(x=>x.version))+1}-${updatedAt}-${Math.random().toString(36).slice(2,9)}`,version:Math.max(...versions.map(x=>x.version))+1,updatedAt,migrated:false};
+ const store=rubricStore();store[g]=[...(Array.isArray(store[g])?store[g]:[]),next];localStorage.setItem(RUBRIC_KEY,JSON.stringify(store));return next;
+}
+function openRubricSettings(){needPin(()=>{
+ $('rubricGrade').innerHTML=[1,2,3,4,5,6].map(g=>`<option value="${g}" ${g==grade?'selected':''}>الصف ${GN[g]}</option>`).join('');
+ $('rubricError').textContent='';renderRubricSettings();show('rubricSettings');
+});}
+function renderRubricSettings(){
+ const g=+$('rubricGrade').value,r=currentRubric(g),byId=Object.fromEntries(r.criteria.map(c=>[c.id,c]));
+ $('rubricScale').innerHTML=`<h3>وصف الدرجات</h3>${r.scale.map((label,i)=>`<label>الدرجة ${ar(i)} · ${i===0?'لم يظهر بعد':i===1?'جزئيًا':'بوضوح'}</label><input class="full" id="rubricScale${i}" maxlength="100" value="${esc(label)}">`).join('')}<p class="note">الدرجة ٠ أو ١ أو ٢. اختاري «لم يُقيّم» أثناء التقييم إذا لم تتوفر أدلة.</p>`;
+ $('rubricCriteria').innerHTML='<h3>المهارات والأوزان</h3>'+COMPREHENSION_CRITERIA.map(c=>{const v=byId[c.id]||{active:true,weight:1};return `<div class="rubric-item"><label><input type="checkbox" id="rubricActive_${c.id}" ${v.active!==false?'checked':''} style="width:auto"> ${esc(c.label)}</label><div class="rubric-grid"><label>المجال<input readonly value="${esc(c.domain)}"></label><label>الوزن (١–٥)<input id="rubricWeight_${c.id}" type="number" min="1" max="5" step="1" value="${Math.max(1,Math.min(5,+v.weight||1))}"></label></div></div>`;}).join('');
+ const saved=rubricVersions(g).filter(x=>x.version>1).sort((a,b)=>b.version-a.version);
+ $('rubricError').textContent=saved.length?`الإصدار الحالي ${ar(r.version)} · ${ar(saved.length)} إصدارات محفوظة. كل تقييم سابق يحتفظ بإعداداته.`:`الإصدار الافتراضي ١ · أوزان متساوية.`;
+}
+function saveRubricSettings(){
+ const g=+$('rubricGrade').value,scale=[0,1,2].map(i=>$('rubricScale'+i).value.trim());
+ const criteria=COMPREHENSION_CRITERIA.map(c=>{const weight=+$('rubricWeight_'+c.id).value;return {...c,active:$('rubricActive_'+c.id).checked,weight};});
+ if(scale.some(x=>!x)){ $('rubricError').textContent='أكملي أوصاف الدرجات الثلاثة.';return;}
+ if(criteria.some(c=>!Number.isInteger(c.weight)||c.weight<1||c.weight>5)){ $('rubricError').textContent='يجب أن يكون وزن كل مهارة بين ١ و٥.';return;}
+ if(!criteria.some(c=>c.active)){ $('rubricError').textContent='اختاري مهارة واحدة على الأقل لهذا الصف.';return;}
+ const versions=rubricVersions(g),version=Math.max(...versions.map(x=>x.version))+1;
+ const updatedAt=Date.now(),r={id:`grade-${g}-v${version}-${updatedAt}-${Math.random().toString(36).slice(2,9)}`,grade:g,version,updatedAt,scale,criteria};
+ const store=rubricStore();store[g]=[...(Array.isArray(store[g])?store[g]:[]),r];localStorage.setItem(RUBRIC_KEY,JSON.stringify(store));
+ alert(`تم حفظ الإصدار ${ar(version)} للصف ${GN[g]} ✅`);renderRubricSettings();
+}
+
+/* ========== Specialist comprehension assessment ========== */
+let assessmentSid='',assessmentRubric=null;
+function openAssessment(sid){needPin(()=>{
+ if(!sid||!getStudents().some(s=>s.id===sid)){alert('اختاري طالبًا أولًا.');return;}
+ assessmentSid=sid;const previous=getAssessments().filter(a=>a.sid===sid).sort((a,b)=>b.ts-a.ts)[0];
+ $('assessmentStudent').textContent='الطالب: '+studentName(sid);
+ $('assessmentGrade').innerHTML=[1,2,3,4,5,6].map(g=>`<option value="${g}" ${g==(previous?previous.grade:grade)?'selected':''}>الصف ${GN[g]}</option>`).join('');
+ $('assessmentTitle').value='اختبار الفهم القرائي';$('assessmentNotes').value='';$('assessmentError').textContent='';renderAssessmentForm();show('assessment');
+ });}
+function renderAssessmentForm(){
+ const g=+$('assessmentGrade').value;assessmentRubric=JSON.parse(JSON.stringify(currentRubric(g)));
+ $('assessmentVersion').textContent=`سلم الدرجات: الإصدار ${ar(assessmentRubric.version)} · الصف ${GN[g]}`;
+ $('assessmentItems').innerHTML=assessmentRubric.criteria.filter(c=>c.active!==false).map(c=>`<div class="card"><h3>${esc(c.domain)} · ${esc(c.label)}</h3><div class="row"><label for="assessmentScore_${c.id}">التقدير</label><select class="score-select assessment-score" id="assessmentScore_${c.id}" data-skill="${c.id}" onchange="updateAssessmentTotal()"><option value="na">لم يُقيّم</option>${assessmentRubric.scale.map((s,i)=>`<option value="${i}">${ar(i)} · ${esc(s)}</option>`).join('')}</select><span class="note">الوزن: ${ar(c.weight)}</span></div><label for="assessmentEvidence_${c.id}">دليل أو استجابة الطالب (اختياري)</label><textarea id="assessmentEvidence_${c.id}" rows="2" maxlength="500" placeholder="اكتبي ملاحظة قصيرة عن الإجابة أو الأداء"></textarea></div>`).join('');
+ updateAssessmentTotal();
+}
+function assessmentEntries(){return [...document.querySelectorAll('.assessment-score')].map(el=>{const c=assessmentRubric.criteria.find(x=>x.id===el.dataset.skill);return {criterion:c,score:el.value==='na'?null:+el.value,evidence:$('assessmentEvidence_'+c.id).value.trim()};});}
+function assessmentScoreSummary(entries){
+ const assessed=entries.filter(x=>x.score!==null),weight=assessed.reduce((n,x)=>n+x.criterion.weight,0),max=weight*2,points=assessed.reduce((n,x)=>n+x.score*x.criterion.weight,0);
+ return {points,max,weight,percent:max?Math.round(points/max*100):null};
+}
+function updateAssessmentTotal(){
+ const entries=assessmentEntries(),s=assessmentScoreSummary(entries);
+ $('assessmentTotal').innerHTML=s.max?stat('الدرجة الموزونة',`${ar(s.points)} / ${ar(s.max)}`)+stat('النسبة الحسابية',ar(s.percent)+'٪')+stat('المهارات المقيمة',ar(entries.filter(x=>x.score!==null).length)):'<p class="note">اختاري درجة لمهارة واحدة على الأقل لعرض الحساب.</p>';
+}
+function saveAssessment(){
+ const title=$('assessmentTitle').value.trim(),entries=assessmentEntries(),scored=entries.filter(x=>x.score!==null),sum=assessmentScoreSummary(entries);
+ if(!title){$('assessmentError').textContent='اكتبي اسم الاختبار أو النص.';return;}
+ if(!scored.length){$('assessmentError').textContent='قيّمي مهارة واحدة على الأقل، أو ألغِي التقييم.';return;}
+ const domains={};entries.forEach(x=>{const k=x.criterion.domain;domains[k]=domains[k]||{points:0,max:0,weight:0,assessed:0};if(x.score!==null){domains[k].points+=x.score*x.criterion.weight;domains[k].max+=2*x.criterion.weight;domains[k].weight+=x.criterion.weight;domains[k].assessed++;}});
+ Object.values(domains).forEach(d=>d.percent=d.max?Math.round(d.points/d.max*100):null);
+ const ts=Date.now(),record={id:'a'+ts+'-'+Math.random().toString(36).slice(2,7),sid:assessmentSid,studentName:studentName(assessmentSid),grade:+$('assessmentGrade').value,title,ts,date:new Date(ts).toLocaleDateString('ar'),evaluator:meName()||'',rubricId:assessmentRubric.id,rubricVersion:assessmentRubric.version,rubricSnapshot:JSON.parse(JSON.stringify(assessmentRubric)),items:entries.map(x=>({skillId:x.criterion.id,domain:x.criterion.domain,label:x.criterion.label,weight:x.criterion.weight,score:x.score,evidence:x.evidence})),notes:$('assessmentNotes').value.trim(),summary:sum,domains};
+ const all=getAssessments();all.unshift(record);localStorage.setItem(ASSESSMENTS_KEY,JSON.stringify(all));alert('تم حفظ التقييم مع إصدار سلم الدرجات ✅');openProfile(assessmentSid);
+}
+function cancelAssessment(){if(assessmentSid)openProfile(assessmentSid);else goHome();}
+function renderAssessmentHistory(sid){
+ const list=getAssessments().filter(a=>a.sid===sid).sort((a,b)=>b.ts-a.ts);
+ if(!list.length)return '<div class="card"><h2>تقييمات الفهم الشامل</h2><p class="note">لا توجد تقييمات بعد.</p></div>';
+ return '<div class="card"><h2>تقييمات الفهم الشامل</h2>'+list.map(a=>`<details class="rubric-item"><summary><b>${esc(a.title)}</b> · الصف ${GN[a.grade]} · ${esc(a.date)} · الإصدار ${ar(a.rubricVersion)} · ${a.summary.percent===null?'لم تتوفر درجات كافية':ar(a.summary.points)+' / '+ar(a.summary.max)+' ('+ar(a.summary.percent)+'٪)'}</summary><p class="note">النسبة وصف حسابي موزون من المهارات التي قُيّمت فقط، وليست مستوى نجاح أو تشخيصًا.</p><table><tr><th>المجال والمهارة</th><th>الدرجة</th><th>الدليل</th></tr>${a.items.map(x=>`<tr><td>${esc(x.domain)} · ${esc(x.label)}</td><td>${x.score===null?'لم يُقيّم':ar(x.score)+' — '+esc((a.rubricSnapshot.scale||[])[x.score]||'')}</td><td>${esc(x.evidence||'—')}</td></tr>`).join('')}</table>${a.notes?`<p style="white-space:pre-wrap">${esc(a.notes)}</p>`:''}</details>`).join('')+'</div>';
 }
 
 /* ========== Home ========== */
@@ -750,7 +901,7 @@ function renderParent(d){
  const trend=d.w.length<2?'نحتاج جلسات أكثر لرؤية التطور.':last>first?'سرعة القراءة تتحسن هذا الأسبوع 📈':last==first?'سرعة القراءة ثابتة، والتدريب اليومي يصنع الفرق.':'كان أسبوعًا صعبًا قليلًا، والتشجيع في البيت يساعد كثيرًا 💛';
  $('parentBody').innerHTML=`<div class="card" style="text-align:center"><h2 style="font-size:32px">ملخص الأسبوع</h2><p style="font-size:26px;margin:0">${esc(d.n)}</p><p class="note">${d.wk?`من ${esc(d.f)} إلى ${esc(d.t)}`:'آخر الجلسات'}</p><p class="note">رابط خاص صالح لمدة ٧ أيام</p><p style="font-size:34px;margin:8px 0">${stars}</p></div>`
  +(d.s?`<div class="card"><div class="stats">${stat('جلسات القراءة',ar(d.s))+stat('قراءات صالحة للمقارنة',ar(d.w.length))+stat('آخر سرعة صالحة للمقارنة',d.w.length?ar(last):'—')+stat('متوسط الفهم',ar(avgC)+'٪')}</div></div>${d.w.length?`<div class="card"><h2>تطور سرعة القراءة</h2>${chart(d.w,Math.max(...d.w,10)*1.2,'#1FA6A0',null)}<p class="note">الأقدم على اليمين، والأحدث على اليسار.</p><p style="font-size:22px">${trend}</p></div>`:'<div class="card"><p class="note">لم تتوفر بعد قراءة مدتها ١٥ ثانية أو أكثر للمقارنة.</p></div>'}`:'<div class="card"><p class="note">لا توجد جلسات هذا الأسبوع بعد.</p></div>')
- +`<div class="card"><h2>🦘 نصيحة رو لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة التعليمية فقط، وليس تشخيصًا. للاستفسار تواصلوا مع العيادة التي تستخدم سنفور.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
+ +`<div class="card"><h2>🦘 نصيحة سنفور لولي الأمر</h2><p style="font-size:21px;line-height:1.9">اقرؤوا معًا ١٠ دقائق كل يوم، واطلبوا من ${esc(d.n)} أن يحكي لكم ما فهمه من القصة. امدحوا الجهد قبل السرعة!</p><p class="note">هذا التقرير للمتابعة التعليمية فقط، وليس تشخيصًا. للاستفسار تواصلوا مع العيادة التي تستخدم سنفور.</p></div><div class="row"><button class="alt" onclick="window.print()">🖨️ طباعة</button></div>`;
 }
 
 /* ========== Parent consent ========== */
@@ -836,12 +987,17 @@ function mergeSnap(loc,rem){
  out.sanfour_students=JSON.stringify(mergeArr(J(loc,'sanfour_students'),J(rem,'sanfour_students'),x=>x.id).filter(x=>!T.s.includes(x.id)));
  out.sanfour_h=JSON.stringify(mergeArr(J(loc,'sanfour_h'),J(rem,'sanfour_h'),x=>x.sid+'|'+(x.ts||(x.date+'|'+x.wcpm+'|'+x.acc+'|'+x.comp))+'|'+x.title).filter(x=>!T.s.includes(x.sid)).sort((a,b)=>(b.ts||0)-(a.ts||0)));
  out.sanfour_custom=JSON.stringify(mergeArr(J(loc,'sanfour_custom'),J(rem,'sanfour_custom'),x=>x.id).filter(x=>!T.p.includes(x.id)));
+ const arr=(v)=>Array.isArray(v)?v:[];
+ out.sanfour_assessments=JSON.stringify(mergeArr(arr(J(loc,'sanfour_assessments')),arr(J(rem,'sanfour_assessments')),x=>x&&x.id).filter(x=>x&&!T.s.includes(x.sid)).sort((a,b)=>(b.ts||0)-(a.ts||0)));
+ const rl=JO(loc,'sanfour_rubrics'),rr=JO(rem,'sanfour_rubrics'),rubrics={};
+ [...new Set([...Object.keys(rl),...Object.keys(rr)])].filter(g=>/^[1-6]$/.test(g)).forEach(g=>{rubrics[g]=mergeArr(arr(rl[g]).filter(x=>x&&typeof x==='object'&&typeof x.id==='string'),arr(rr[g]).filter(x=>x&&typeof x==='object'&&typeof x.id==='string'),x=>x.id).sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0)||a.version-b.version);});
+ out.sanfour_rubrics=JSON.stringify(rubrics);
  delete out.sanfour_users;delete out.sanfour_pin;
  out.sanfour_tomb=JSON.stringify(T);
  return out;
 }
 function tombAdd(t,id){const o=JSON.parse(localStorage.getItem('sanfour_tomb')||'{}');o[t]=o[t]||[];if(!o[t].includes(id))o[t].push(id);localStorage.setItem('sanfour_tomb',JSON.stringify(o));}
-const _ds=deleteStudent;window.deleteStudent=function(){const id=profSid,n=getStudents().length;_ds();if(getStudents().length<n){tombAdd('s',id);const links=parentLinks(),share=links[id];delete links[id];sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));if(share&&share.shareId){queueParentRevoke(share.shareId);flushParentRevokes();}}};
+const _ds=deleteStudent;window.deleteStudent=function(){const id=profSid,n=getStudents().length;_ds();if(getStudents().length<n){tombAdd('s',id);localStorage.setItem('sanfour_assessments',JSON.stringify(getAssessments().filter(a=>a.sid!==id)));const links=parentLinks(),share=links[id];delete links[id];sessionStorage.setItem(PARENT_LINKS_KEY,JSON.stringify(links));if(share&&share.shareId){queueParentRevoke(share.shareId);flushParentRevokes();}}};
 const _dp=delPassage;window.delPassage=function(id){const n=getCustom().length;_dp(id);if(getCustom().length<n)tombAdd('p',id);};
 const _du=delUser;window.delUser=function(i){const nm=(getUsers()[i]||{}).u,n=getUsers().length;_du(i);if(getUsers().length<n&&nm)tombAdd('u',nm);};
 function setCloudInfo(j){if(j.role){cRole=j.role;_lsSet.call(localStorage,'sfc_role',cRole);}if(j.clinic){cClinic=j.clinic.name||'';_lsSet.call(localStorage,'sfc_clinic',cClinic);}}
@@ -1208,15 +1364,15 @@ const hpSave=o=>localStorage.setItem(HP_KEY,JSON.stringify(o));
 #hp .ptx span.on{background:var(--y)}
 #hp .hpTm{font-size:34px;font-weight:800;color:var(--c)}
 @media(max-width:600px){#hp .ptx{font-size:24px}}`;document.head.appendChild(c);})();
-function hpStopAud(){if(hpAud){hpAud.pause();hpAud=null;}clearInterval(hpAT);document.querySelectorAll('#hpTx span.on').forEach(e=>e.classList.remove('on'));const b=$('hpListen');if(b)b.textContent='🔊 استمع لرو';}
+function hpStopAud(){if(hpAud){hpAud.pause();hpAud=null;}clearInterval(hpAT);document.querySelectorAll('#hpTx span.on').forEach(e=>e.classList.remove('on'));const b=$('hpListen');if(b)b.textContent='🔊 استمع لسنفور';}
 function hpOpen(d){hpD=d;document.body.insertAdjacentHTML('beforeend','<div id="hp"><div class="wrap" id="hpBody"></div></div>');hpHome();}
 function hpHead(){return `<div class="row" style="justify-content:space-between;margin-bottom:6px"><div class="row"><img src="001_Sanfour_Arabic_Logo_qHa2qU9s.jpg" onerror="this.style.display='none'" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--s)"><b style="font-size:24px">سنفو<span style="color:var(--y)">ر</span></b></div></div>`;}
 function hpHome(){
  hpStopAud();clearInterval(hpTick);
  const lg=hpLog(),list=PASSAGES.filter(p=>p.grade==hpD.g&&p.level<=hpD.l).sort((a,b)=>b.level-a.level);
- $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:44px;margin:0">🦘</p><h2 style="font-size:28px">مرحبًا يا ${esc(hpD.n)}!</h2><p style="font-size:20px;margin:0">هيا نتدرّب على القراءة مع رو</p><div class="stats" style="margin-top:12px">${stat('نجومك ⭐',ar(lg.stars))+stat('أيام التدريب 🔥',ar(lg.days.length))+stat('مرات القراءة 📖',ar(lg.reads))}</div></div>
+ $('hpBody').innerHTML=hpHead()+`<div class="card" style="text-align:center"><p style="font-size:44px;margin:0">🦘</p><h2 style="font-size:28px">مرحبًا يا ${esc(hpD.n)}!</h2><p style="font-size:20px;margin:0">هيا نتدرّب على القراءة مع سنفور</p><div class="stats" style="margin-top:12px">${stat('نجومك ⭐',ar(lg.stars))+stat('أيام التدريب 🔥',ar(lg.days.length))+stat('مرات القراءة 📖',ar(lg.reads))}</div></div>
 <div class="card"><h2>اختر قصة</h2>${list.length?list.map(p=>`<button class="pbtn" onclick="hpRead('${p.id}')">${p.level==hpD.l?'⭐':'🌱'} ${esc(p.title)}${lg.best[p.id]?` <span class="note">— أفضل وقت: ${ar(lg.best[p.id])} ث</span>`:''}</button>`).join(''):'<p class="note">لا توجد قصص لهذا المستوى بعد.</p>'}</div>
-<div class="card"><h2>👪 لولي الأمر</h2><p>اجلسوا بجانب طفلكم ١٠ دقائق يوميًّا: يستمع أولًا لرو، ثم يقرأ بصوت مرتفع، ثم يعيد القراءة. امدحوا الجهد قبل السرعة.</p><p class="note">لا يُسجَّل صوت الطفل، ولا تُرسل نتائج التدريب إلى العيادة. التقدّم محفوظ على هذا الجهاز فقط.</p></div>`;
+<div class="card"><h2>👪 لولي الأمر</h2><p>اجلسوا بجانب طفلكم ١٠ دقائق يوميًّا: يستمع أولًا لسنفور، ثم يقرأ بصوت مرتفع، ثم يعيد القراءة. امدحوا الجهد قبل السرعة.</p><p class="note">لا يُسجَّل صوت الطفل، ولا تُرسل نتائج التدريب إلى العيادة. التقدّم محفوظ على هذا الجهاز فقط.</p></div>`;
  window.scrollTo(0,0);$('hp').scrollTop=0;
 }
 function hpRead(id){
@@ -1224,8 +1380,8 @@ function hpRead(id){
  hpP=PASSAGES.find(p=>p.id==id);if(!hpP)return;
  hpW=hpP.text.trim().split(/\s+/);
  $('hpBody').innerHTML=hpHead()+`<div class="row"><button class="alt small" onclick="hpHome()">🏠 القصص</button></div>
-<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(hpP.title)}</h2><span class="hpTm" id="hpTm">${ar(0)}</span></div><p class="note">💡 استمع أولًا لرو، ثم اقرأ القصة بصوت مرتفع.</p><div class="ptx" id="hpTx">${hpW.map(w=>`<span>${esc(w)}</span>`).join(' ')}</div></div>
-<div class="row" id="hpCtl"><button class="yellow" id="hpListen" onclick="hpListen()">🔊 استمع لرو</button><button id="hpGo" onclick="hpStart()">▶️ ابدأ القراءة</button><button class="coral hidden" id="hpStop" onclick="hpStop()">⏹ انتهيت!</button></div><div id="hpRes"></div>`;
+<div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(hpP.title)}</h2><span class="hpTm" id="hpTm">${ar(0)}</span></div><p class="note">💡 استمع أولًا لسنفور، ثم اقرأ القصة بصوت مرتفع.</p><div class="ptx" id="hpTx">${hpW.map(w=>`<span>${esc(w)}</span>`).join(' ')}</div></div>
+<div class="row" id="hpCtl"><button class="yellow" id="hpListen" onclick="hpListen()">🔊 استمع لسنفور</button><button id="hpGo" onclick="hpStart()">▶️ ابدأ القراءة</button><button class="coral hidden" id="hpStop" onclick="hpStop()">⏹ انتهيت!</button></div><div id="hpRes"></div>`;
  $('hp').scrollTop=0;
 }
 function hpListen(){
@@ -1273,7 +1429,7 @@ window.addParentCard=function(){
  _apc7();
  if(!profSid||$('hpCard'))return;
  const last=getHist().find(r=>r.sid==profSid&&r.grade),g=last?last.grade:grade,l=last?last.level:level;
- $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="hpCard"><h2>🏠 التدريب في البيت</h2><p class="note">رابط للطفل يتدرّب به في البيت: يستمع لرو، ويقرأ مع مؤقّت، ويجيب عن الأسئلة. لا يُسجَّل الصوت، ولا تُرسل النتائج إلى العيادة.</p><div class="row"><select id="hpG">${[1,2,3,4,5,6].map(x=>`<option value="${x}" ${x==g?'selected':''}>الصف ${GN[x]}</option>`).join('')}</select><select id="hpL">${[1,2,3].map(x=>`<option value="${x}" ${x==l?'selected':''}>المستوى ${ar(x)} · ${LN[x]}</option>`).join('')}</select></div><div class="row" style="margin-top:8px"><button onclick="window.open(hpLinkNow(),'_blank')">فتح التدريب</button><button class="yellow" onclick="hpShare()">مشاركة عبر واتساب</button><button class="alt" onclick="hpCopy()">نسخ الرابط</button></div></div>`);
+ $('prBody').insertAdjacentHTML('afterbegin',`<div class="card" id="hpCard"><h2>🏠 التدريب في البيت</h2><p class="note">رابط للطفل يتدرّب به في البيت: يستمع لسنفور، ويقرأ مع مؤقّت، ويجيب عن الأسئلة. لا يُسجَّل الصوت، ولا تُرسل النتائج إلى العيادة.</p><div class="row"><select id="hpG">${[1,2,3,4,5,6].map(x=>`<option value="${x}" ${x==g?'selected':''}>الصف ${GN[x]}</option>`).join('')}</select><select id="hpL">${[1,2,3].map(x=>`<option value="${x}" ${x==l?'selected':''}>المستوى ${ar(x)} · ${LN[x]}</option>`).join('')}</select></div><div class="row" style="margin-top:8px"><button onclick="window.open(hpLinkNow(),'_blank')">فتح التدريب</button><button class="yellow" onclick="hpShare()">مشاركة عبر واتساب</button><button class="alt" onclick="hpCopy()">نسخ الرابط</button></div></div>`);
 };
  
  /* ========== Start ========== */
